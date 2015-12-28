@@ -18,7 +18,7 @@ bool verbosity = false;
 
 void verbPrintf(const char *format, ...)
 {
-    // va_list is a special type that allows hanlding of variable
+    // va_list is a special type that allows handling of variable
     // length parameter list
     va_list args;
     va_start(args, format);
