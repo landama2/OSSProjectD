@@ -11,7 +11,7 @@
 
 #include "route_cfg_parser.h"
 
-int main(int argc, char ** argv)
+int bain(int argc, char ** argv)
 {
 	if (argc < 2) {
 		fprintf(stderr, "Not enough arguments\nUsage: %s <ID> [ <cfg-file-name> ]\n", argv[0]);
