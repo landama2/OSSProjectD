@@ -35,5 +35,6 @@ int main ( int argc, char *argv[] ) {
     }
     // //
     printf("Test commit2");
+    printf("Misa tady byla a upravila si mail!");
     return 0;
 }
