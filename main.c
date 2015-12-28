@@ -3,6 +3,7 @@
 //
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -15,11 +16,17 @@
 
 bool verbosity = false;
 
-void verbPrintf(const char *message) {
+void verbPrintf(const char *format, ...)
+{
+    // va_list is a special type that allows hanlding of variable
+    // length parameter list
+    va_list args;
+    va_start(args, format);
 
+    // If verbosity flag is on then print it
     if (verbosity)
-        printf(message);
-    else {
+        vfprintf (stdout, format, args);
+    else{
 
     }
     // Do nothing
@@ -37,7 +44,7 @@ int main(int argc, char ** argv) {
     printf("\n%s\n",argv[2]);
     int result = parseRouteConfiguration((argc>2)?argv[2]:NULL, localId, &localPort, &connectionCount, connections);
     if (result) {
-        printf("OK, local port: %d\n", localPort);
+        verbPrintf("OK, local port: %d\n", localPort);
 
         if (connectionCount > 0) {
             int i;
