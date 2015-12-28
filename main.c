@@ -22,9 +22,6 @@ void verbPrintf(const char *message) {
     // Do nothing
 }
 
-
-
-
 int main(int argc, char *argv[]) {
     if (argc == 1) /* argc should be 2 for correct execution */{
         /* We print argv[0] assuming it is the program name */
