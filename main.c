@@ -33,5 +33,6 @@ int main ( int argc, char *argv[] ) {
             fclose(file);
         }
     }
+    printf("Test commit");
     return 0;
 }
