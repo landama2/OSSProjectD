@@ -33,6 +33,7 @@ int main ( int argc, char *argv[] ) {
             fclose(file);
         }
     }
+    //
     printf("Test commit2");
     printf("Misa tady byla!");
     return 0;
