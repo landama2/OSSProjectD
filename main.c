@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
 //        printf( "usage: %s filename", argv[0] );
     } else if (argc == 2) {
         printf("usage: %s filename\n", argv[0]);
-        printf("Number of this node is: %s", argv[1]);
+        printf("Number of this node is: %s \n", argv[1]);
     } else {
         struct sockaddr_in si_me, si_other;
         return 0;

@@ -21,6 +21,7 @@ int main(int argc, char ** argv)
 	int connectionCount = 100;
 	int localPort;
 	TConnection connections[connectionCount];
+	printf("\n%s\n",argv[2]);
 	int result = parseRouteConfiguration((argc>2)?argv[2]:NULL, localId, &localPort, &connectionCount, connections);
 	if (result) {
 		printf("OK, local port: %d\n", localPort);
