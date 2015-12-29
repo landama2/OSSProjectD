@@ -94,9 +94,11 @@ void *clientThread(void *arg)
         for (ii =0; ii < connectionCount; ii++) {
             if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1)
                 diep("sendto()");
+            printf("Send packet to %s:%d\nData: %s\n\n",
+                   inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
         }
-        if (sendto(s, buf, BUFLEN, 0, &si_other, slen)==-1)
-            diep("sendto()");
+//        if (sendto(s, buf, BUFLEN, 0, &si_other, slen)==-1)
+//            diep("sendto()");
 
         printf("threadFunc says: %s\n",str);
         i = i + 1 % 200000;
