@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include  <signal.h>
 
 #include "route_cfg_parser.h"
 
@@ -26,6 +27,13 @@ int connectionCount = 100;
 int localPort;
 TConnection connections[100];
 int localId;
+
+volatile sig_atomic_t got_sig;
+
+//handling the sigint signal to terminate
+void sigintHandler(int sig) {
+    got_sig = 1;
+}
 
 void verbPrintf(const char *format, ...)
 {
@@ -75,12 +83,11 @@ void *clientThread(void *arg)
     }
 
 
-    while(1 == 1)
+    while(!got_sig)
     {
-        usleep(1);
+        sleep(1);
         printf("Sending packet %d\n", i);
         sprintf(buf, "This is packet %d\n", i);
-        ii = 0;
         for (ii =0; ii < connectionCount; ii++) {
             if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1)
                 diep("sendto()");
@@ -115,9 +122,9 @@ void *serverThread(void *arg)
     if (bind(s, &si_me, sizeof(si_me))==-1)
         diep("bind");
 
-    while(1==1)
+    while(!got_sig)
     {
-        usleep(1);
+        sleep(1);
         if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen)==-1)
             diep("recvfrom()");
         printf("Received packet from %s:%d\nData: %s\n\n",
@@ -141,6 +148,19 @@ int main(int argc, char ** argv) {
         }
 
     }
+
+    struct sigaction sig_action;
+    got_sig = 0;
+
+    sig_action.sa_handler = sigintHandler;
+    sig_action.sa_flags = 0;
+    sigemptyset(&sig_action.sa_mask);
+
+    if (sigaction(SIGINT, &sig_action, NULL) == -1) {
+        perror("sigaction");
+        exit(1);
+    }
+
     localId = atoi(argv[1]);
     verbPrintf("\n%s\n",argv[2]);
     int result = parseRouteConfiguration((argc>2)?argv[2]:NULL, localId, &localPort, &connectionCount, connections);
