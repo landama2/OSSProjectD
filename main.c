@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <pthread.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -30,6 +31,24 @@ void verbPrintf(const char *format, ...)
         vfprintf (stderr, format, args);
     // Do nothing
 }
+
+void *threadFunc(void *arg)
+{
+    char *str;
+    int i = 0;
+
+    str=(char*)arg;
+
+    while(i < 110 )
+    {
+        usleep(1);
+        printf("threadFunc says: %s\n",str);
+        ++i;
+    }
+
+    return NULL;
+}
+
 
 int main(int argc, char ** argv) {
     if (argc < 2) {
@@ -62,4 +81,19 @@ int main(int argc, char ** argv) {
     } else {
         verbPrintf("ERROR\n");
     }
+
+    pthread_t pth;	// this is our thread identifier
+    int i = 0;
+
+    pthread_create(&pth,NULL,threadFunc,"foo");
+
+    while(i < 100)
+    {
+        usleep(1);
+        printf("main is running...\n");
+        ++i;
+    }
+
+    printf("main waiting for thread to terminate...\n");
+    pthread_join(pth,NULL);
 }
