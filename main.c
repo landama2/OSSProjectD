@@ -3,6 +3,8 @@
 //
 
 #include <stdio.h>
+#include <stdarg.h>
+#include <string.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -13,15 +15,19 @@
 
 #include "route_cfg_parser.h"
 
-bool verbosity = false;
+bool verbosity = true; // should be passed as 3rd argument
+char quiet[10] = "--quiet";
 
-void verbPrintf(const char *message) {
+void verbPrintf(const char *format, ...)
+{
+    // va_list is a special type that allows handling of variable
+    // length parameter list
+    va_list args;
+    va_start(args, format);
 
+    // If verbosity flag is on then print it
     if (verbosity)
-        printf(message);
-    else {
-
-    }
+        vfprintf (stderr, format, args);
     // Do nothing
 }
 
@@ -30,24 +36,30 @@ int main(int argc, char ** argv) {
         fprintf(stderr, "Not enough arguments\nUsage: %s <ID> [ <cfg-file-name> ]\n", argv[0]);
         return -1;
     }
+    if (argc > 3) {
+        if(strcmp(argv[3],quiet) == 0){
+            verbosity = false;
+        }
+
+    }
     int localId = atoi(argv[1]);
     int connectionCount = 100;
     int localPort;
     TConnection connections[connectionCount];
-    printf("\n%s\n",argv[2]);
+    verbPrintf("\n%s\n",argv[2]);
     int result = parseRouteConfiguration((argc>2)?argv[2]:NULL, localId, &localPort, &connectionCount, connections);
     if (result) {
-        printf("OK, local port: %d\n", localPort);
+        verbPrintf("OK, local port: %d\n", localPort);
 
         if (connectionCount > 0) {
             int i;
             for (i=0; i<connectionCount; i++) {
-                printf("Connection to node %d at %s%s%d\n", connections[i].id, connections[i].ip_address, (connections[i].ip_address[0])?":":"port ", connections[i].port);
+                verbPrintf("Connection to node %d at %s%s%d\n", connections[i].id, connections[i].ip_address, (connections[i].ip_address[0])?":":"port ", connections[i].port);
             }
         } else {
-            printf("No connections from this node\n");
+            verbPrintf("No connections from this node\n");
         }
     } else {
-        printf("ERROR\n");
+        verbPrintf("ERROR\n");
     }
 }
