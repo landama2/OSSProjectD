@@ -23,6 +23,10 @@
 
 bool verbosity = true; // should be passed as 3rd argument
 char quiet[10] = "--quiet";
+int connectionCount = 100;
+int localPort;
+TConnection connections[100];
+int localId;
 
 void verbPrintf(const char *format, ...)
 {
@@ -51,11 +55,26 @@ void *clientThread(void *arg)
 
     str=(char*)arg;
     struct sockaddr_in si_other;
+    struct sockaddr_in sis[100];
     int s, slen=sizeof(si_other);
     char buf[BUFLEN];
 
     if ((s=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP))==-1)
         diep("socket");
+
+    int ii;
+    for (ii =0; ii < connectionCount; ii++) {
+        memset((char *) &sis[ii], 0, sizeof(sis[ii]));
+        sis[ii].sin_family = AF_INET;
+        sis[ii].sin_port = htons(connections[ii].port);
+        if (inet_aton(SRV_IP, &sis[ii].sin_addr) == 0) {
+            fprintf(stderr, "inet_aton() failed\n");
+            exit(1);
+        }
+
+//        verbPrintf("Connection to node %d at %s%s%d\n", connections[i].id, connections[i].ip_address, (connections[i].ip_address[0])?":":"port ", connections[i].port);
+    }
+
 
     memset((char *) &si_other, 0, sizeof(si_other));
     si_other.sin_family = AF_INET;
@@ -70,10 +89,17 @@ void *clientThread(void *arg)
         sleep(1);
         printf("Sending packet %d\n", i);
         sprintf(buf, "This is packet %d\n", i);
+        ii = 0;
+        for (ii =0; ii < connectionCount; ii++) {
+            if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1)
+                diep("sendto()");
+        }
         if (sendto(s, buf, BUFLEN, 0, &si_other, slen)==-1)
             diep("sendto()");
+
         printf("threadFunc says: %s\n",str);
         i = i + 1 % 200000;
+        sleep(1);
     }
     close(s);
     return NULL;
@@ -91,10 +117,7 @@ int main(int argc, char ** argv) {
         }
 
     }
-    int localId = atoi(argv[1]);
-    int connectionCount = 100;
-    int localPort;
-    TConnection connections[connectionCount];
+    localId = atoi(argv[1]);
     verbPrintf("\n%s\n",argv[2]);
     int result = parseRouteConfiguration((argc>2)?argv[2]:NULL, localId, &localPort, &connectionCount, connections);
     if (result) {
