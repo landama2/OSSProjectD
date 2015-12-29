@@ -134,6 +134,7 @@ void *serverThread(void *arg) {
     return NULL;
 }
 
+//converts char array to string
 int toString(char a[]) {
     int c, sign, offset, n;
 
@@ -174,6 +175,7 @@ int main(int argc, char **argv) {
 
     }
 
+    //handling the signal from CTRL+C
     struct sigaction sig_action;
     got_sig = 0;
 
@@ -206,6 +208,7 @@ int main(int argc, char **argv) {
         verbPrintf("ERROR\n");
     }
 
+    //creating server and client thread
     pthread_t pthreadClient;    // this is our thread identifier
     int i = 0;
 
@@ -220,7 +223,7 @@ int main(int argc, char **argv) {
 
     printf("Ready to send messages.");
 
-    //accepts messages from stdin
+    //accepting messages from stdin
 
     struct sockaddr_in si_other;
     int s, slen = sizeof(si_other);
@@ -231,7 +234,7 @@ int main(int argc, char **argv) {
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
 
-    //nacintani funguje, posilani neni moje parketa
+    //reading and sending msgs
     while (!got_sig) {
         if (fgets(inputMsg, 128, stdin) != NULL) {
             //sending message to desired port
@@ -240,14 +243,17 @@ int main(int argc, char **argv) {
             //separate parts of the message
             char nodeNum[128];
             char *msgPart;
-            strcpy (nodeNum, inputMsg);
-            strtok_r (nodeNum, " ", &msgPart);
-            printf ("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart);
+            strcpy(nodeNum, inputMsg);
+            strtok_r(nodeNum, " ", &msgPart);
+            printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart);
             printf("Receiving node is going to be: %s\n.", nodeNum);
-            receivingNode = toString(nodeNum);
+            //choose converter or atoi ??
+            //receivingNode = toString(nodeNum);
+            receivingNode = atoi(nodeNum);
             printf("Receiving node is going to be (converted): %d\n.", receivingNode);
 
             si_other.sin_family = AF_INET;
+
             //find the port
             for (j = 0; j < connectionCount; j++) {
                 if (connections[j].id == receivingNode) {
@@ -264,14 +270,12 @@ int main(int argc, char **argv) {
             sprintf(buf, "%s\n", msgPart);
             if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
                 diep("sendto()");
-            printf("Send packet to %s:%d\nData: %s\n\n",
+            printf("Send message to %s:%d\nData: %s\n\n",
                    inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
-
         } else {
             printf("Message not accepted.");
         }
     }
-
 
     pthread_join(pthreadClient, NULL);
 }
