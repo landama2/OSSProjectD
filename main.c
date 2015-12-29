@@ -17,8 +17,6 @@
 #include "route_cfg_parser.h"
 
 #define BUFLEN 512
-#define NPACK 10
-#define PORT 9930
 
 #define SRV_IP "127.0.0.1"
 
@@ -77,14 +75,6 @@ void *clientThread(void *arg)
     }
 
 
-    memset((char *) &si_other, 0, sizeof(si_other));
-    si_other.sin_family = AF_INET;
-    si_other.sin_port = htons(PORT);
-    if (inet_aton(SRV_IP, &si_other.sin_addr)==0) {
-        fprintf(stderr, "inet_aton() failed\n");
-        exit(1);
-    }
-
     while(1 == 1)
     {
         usleep(1);
@@ -97,10 +87,7 @@ void *clientThread(void *arg)
             printf("Send packet to %s:%d\nData: %s\n\n",
                    inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
         }
-//        if (sendto(s, buf, BUFLEN, 0, &si_other, slen)==-1)
-//            diep("sendto()");
 
-        printf("threadFunc says: %s\n",str);
         i = i + 1 % 200000;
         sleep(1);
     }
@@ -123,7 +110,7 @@ void *serverThread(void *arg)
 
     memset((char *) &si_me, 0, sizeof(si_me));
     si_me.sin_family = AF_INET;
-    si_me.sin_port = htons(PORT);
+    si_me.sin_port = htons(localPort);
     si_me.sin_addr.s_addr = htonl(INADDR_ANY);
     if (bind(s, &si_me, sizeof(si_me))==-1)
         diep("bind");
