@@ -29,9 +29,11 @@ TConnection connections[100];
 int localId;
 
 char receivedMsg[128];
-char sentMsg[128];
+char inputMsg[128];
 
 volatile sig_atomic_t got_sig;
+
+int toString(char []);
 
 //handling the sigint signal to terminate
 void sigintHandler(int sig) {
@@ -132,6 +134,33 @@ void *serverThread(void *arg) {
     return NULL;
 }
 
+int toString(char a[]) {
+    int c, sign, offset, n;
+
+    if (a[0] == '-') {  // Handle negative integers
+        sign = -1;
+    }
+
+    if (sign == -1) {  // Set starting position to convert
+        offset = 1;
+    }
+    else {
+        offset = 0;
+    }
+
+    n = 0;
+
+    for (c = offset; a[c] != '\0'; c++) {
+        n = n * 10 + a[c] - '0';
+    }
+
+    if (sign == -1) {
+        n = -n;
+    }
+
+    return n;
+}
+
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -204,10 +233,20 @@ int main(int argc, char **argv) {
 
     //nacintani funguje, posilani neni moje parketa
     while (!got_sig) {
-        if (fgets(sentMsg, 128, stdin) != NULL) {
+        if (fgets(inputMsg, 128, stdin) != NULL) {
             //sending message to desired port
-            printf("Message to send: %s\n", sentMsg);
-            receivingNode = sentMsg[0];
+            printf("Message to send: %s\n", inputMsg);
+
+            //separate parts of the message
+            char nodeNum[128];
+            char *msgPart;
+            strcpy (nodeNum, inputMsg);
+            strtok_r (nodeNum, " ", &msgPart);
+            printf ("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart);
+            printf("Receiving node is going to be: %s\n.", nodeNum);
+            receivingNode = toString(nodeNum);
+            printf("Receiving node is going to be (converted): %d\n.", receivingNode);
+
             si_other.sin_family = AF_INET;
             //find the port
             for (j = 0; j < connectionCount; j++) {
@@ -222,7 +261,7 @@ int main(int argc, char **argv) {
                 exit(1);
             }
 
-            sprintf(buf, "%s\n", sentMsg);
+            sprintf(buf, "%s\n", msgPart);
             if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
                 diep("sendto()");
             printf("Send packet to %s:%d\nData: %s\n\n",
