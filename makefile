@@ -13,4 +13,4 @@ route_cfg_parser.o: route_cfg_parser.c route_cfg_parser.h
 	$(CC) -c route_cfg_parser.c $(LDFLAGS)
 
 clean:
-	rm *.o
+	rm *.o program
