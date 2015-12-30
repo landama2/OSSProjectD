@@ -42,7 +42,7 @@ int toString(char []);
 //handling the sigint signal to terminate
 void sigintHandler(int sig) {
     got_sig = 1;
-    printf("Signal received.\n");
+    //printf("Signal received.\n");
 }
 
 void verbPrintf(const char *format, ...) {
