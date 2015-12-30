@@ -32,7 +32,8 @@ int localId;
 char inputMsg[128];
 
 RoutingTableItem routingTable[100];
-char clientMessage[100] = "connected";
+char clientMessage[100] = "connected ";
+char sendingMessage[100] = "message ";
 
 volatile sig_atomic_t got_sig;
 
@@ -61,15 +62,16 @@ void diep(char *s) {
     exit(1);
 }
 
+
 void *clientThread(void *arg) {
-    char *str;
     int i = 0;
 
-    str = (char *) arg;
+
     struct sockaddr_in si_other;
     struct sockaddr_in sis[100];
     int s, slen = sizeof(si_other);
     char buf[BUFLEN];
+    char wholeMessage[BUFLEN];
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
@@ -90,11 +92,17 @@ void *clientThread(void *arg) {
 //        sleep(1);
         printf("Sending packet %d\n", i);
 //        sprintf(buf, "This is packet %d\n", i);
+        strcpy(wholeMessage, clientMessage);
+        char str[15];
+        sprintf(str, "%d", localPort);
+        strcat(wholeMessage, str);
         sprintf(buf, clientMessage);
         for (ii = 0; ii < connectionCount; ii++) {
-            if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1)
+            if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                 diep("sendto()");
-            printf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
+            }
+
+            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
         }
 
         i = i + 1 % 200000;
@@ -114,7 +122,8 @@ void *serverThread(void *arg) {
     char buf[BUFLEN];
 
     //variables used to separate parts of the message
-    char nodeNum[128];
+    char *nodeNum;
+    char wholeMessage[128];//all three parts
     char *msgPart;
     int receivingNode;
 
@@ -133,16 +142,32 @@ void *serverThread(void *arg) {
         if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen) == -1)
             diep("recvfrom()");
 
-        strcpy(nodeNum, buf);
-        strtok_r(nodeNum, " ", &msgPart);
-        receivingNode = atoi(nodeNum);
+        strcpy(wholeMessage, buf);
 
-        if (receivingNode == localId) {
-            printf("Received packet from %s:%d\nMessage: %s\n\n",
-                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), msgPart);
+
+        printf("whole message before converting: %s\n", wholeMessage);
+
+        strtok_r(wholeMessage, " ", &nodeNum);
+
+        if (strcmp(wholeMessage, clientMessage) == 0) {
+            verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
+                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
         } else {
-            //send buf (the whole message) to proper node
 
+            strtok_r(nodeNum, " ", &msgPart);
+            receivingNode = atoi(nodeNum);
+
+            printf("whole message: %s\n", wholeMessage);
+            printf("nodeNum: %s\n", nodeNum);
+            printf("msgPart: %s\n", msgPart);
+
+            if (receivingNode == localId) {
+                printf("Received packet from %s:%d\nMessage: %s\n\n",
+                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), msgPart);
+            } else {
+                //send buf (the whole message) to proper node
+
+            }
         }
 
         //printf("Received packet from %s:%d\nData: %s\n\n",
@@ -257,15 +282,18 @@ int main(int argc, char **argv) {
     //reading and sending msgs
     while (!got_sig) {
         if (fgets(inputMsg, 128, stdin) != NULL) {
+
             //sending message to desired port
             printf("Message to send: %s\n", inputMsg);
 
             //separate parts of the message
-            char nodeNum[128];
-            char *msgPart;
+            char nodeNum[128];// also msgPart2
+            char *msgPart3;
+            char wholeMessage[128];
+            strcpy(wholeMessage, sendingMessage);
             strcpy(nodeNum, inputMsg);
-            strtok_r(nodeNum, " ", &msgPart);
-            printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart);
+            strtok_r(nodeNum, " ", &msgPart3);
+            printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart3);
             printf("Receiving node is going to be: %s\n.", nodeNum);
             //choose converter or atoi ??
             //receivingNode = toString(nodeNum);
@@ -287,7 +315,10 @@ int main(int argc, char **argv) {
                 exit(1);
             }
 
-            sprintf(buf, "%s\n", inputMsg);
+            strcat(wholeMessage, inputMsg);
+
+//            sprintf(buf, "%s\n", inputMsg);
+            sprintf(buf, "%s\n", wholeMessage);
             if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
                 diep("sendto()");
             printf("Send message to %s:%d\nData: %s\n\n",
