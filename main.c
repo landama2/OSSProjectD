@@ -32,7 +32,7 @@ int localId;
 char inputMsg[128];
 
 RoutingTableItem routingTable[100];
-char clientMessage[100] = "connected ";
+char clientMessage[100] = "connected";
 char sendingMessage[100] = "message ";
 
 volatile sig_atomic_t got_sig;
@@ -94,9 +94,9 @@ void *clientThread(void *arg) {
 //        sprintf(buf, "This is packet %d\n", i);
         strcpy(wholeMessage, clientMessage);
         char str[15];
-        sprintf(str, "%d", localPort);
+        sprintf(str, " %d", localId);
         strcat(wholeMessage, str);
-        sprintf(buf, clientMessage);
+        sprintf(buf, wholeMessage);
         for (ii = 0; ii < connectionCount; ii++) {
             if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                 diep("sendto()");
@@ -150,7 +150,7 @@ void *serverThread(void *arg) {
         strtok_r(wholeMessage, " ", &nodeNum);
 
         if (strcmp(wholeMessage, clientMessage) == 0) {
-            verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
+            printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
                        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
         } else {
 
