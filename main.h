@@ -5,4 +5,10 @@
 #ifndef OSSPROJECTD_MAIN_H
 #define OSSPROJECTD_MAIN_H
 
+typedef struct {
+    int idOfTargetNode;
+    int idOfNextNode;
+    int cost;
+} RoutingTableItem;
+
 #endif //OSSPROJECTD_MAIN_H

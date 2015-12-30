@@ -16,13 +16,14 @@
 #include  <signal.h>
 
 #include "route_cfg_parser.h"
+#include "main.h"
 
 #define BUFLEN 512
 
 #define SRV_IP "127.0.0.1"
 
-bool verbosity = true; // should be passed as 3rd argument
-char quiet[10] = "--quiet";
+bool verbosity = true; // should be passed as 3rd argument // already is (optional)
+char quiet[100] = "--quiet";
 int connectionCount = 100;
 int localPort;
 TConnection connections[100];
@@ -30,6 +31,10 @@ int localId;
 
 char receivedMsg[128];
 char inputMsg[128];
+
+RoutingTableItem routingTable[100];
+char clientMessage[100] = "connected";
+
 
 volatile sig_atomic_t got_sig;
 
@@ -85,14 +90,14 @@ void *clientThread(void *arg) {
 
 
     while (!got_sig) {
-        sleep(1);
+//        sleep(1);
         printf("Sending packet %d\n", i);
-        sprintf(buf, "This is packet %d\n", i);
+//        sprintf(buf, "This is packet %d\n", i);
+        sprintf(buf, clientMessage);
         for (ii = 0; ii < connectionCount; ii++) {
             if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1)
                 diep("sendto()");
-            printf("Send packet to %s:%d\nData: %s\n\n",
-                   inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
+            printf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
         }
 
         i = i + 1 % 200000;
@@ -278,4 +283,5 @@ int main(int argc, char **argv) {
     }
 
     pthread_join(pthreadClient, NULL);
+    exit(0);
 }
