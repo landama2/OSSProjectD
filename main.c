@@ -29,12 +29,10 @@ int localPort;
 TConnection connections[100];
 int localId;
 
-char receivedMsg[128];
 char inputMsg[128];
 
 RoutingTableItem routingTable[100];
 char clientMessage[100] = "connected";
-
 
 volatile sig_atomic_t got_sig;
 
@@ -60,7 +58,6 @@ void verbPrintf(const char *format, ...) {
 
 void diep(char *s) {
     perror(s);
-
     exit(1);
 }
 
@@ -116,6 +113,11 @@ void *serverThread(void *arg) {
     int s, slen = sizeof(si_other);
     char buf[BUFLEN];
 
+    //variables used to separate parts of the message
+    char nodeNum[128];
+    char *msgPart;
+    int receivingNode;
+
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
 
@@ -130,8 +132,21 @@ void *serverThread(void *arg) {
         sleep(1);
         if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen) == -1)
             diep("recvfrom()");
-        printf("Received packet from %s:%d\nData: %s\n\n",
-               inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+
+        strcpy(nodeNum, buf);
+        strtok_r(nodeNum, " ", &msgPart);
+        receivingNode = atoi(nodeNum);
+
+        if (receivingNode == localId) {
+            printf("Received packet from %s:%d\nMessage: %s\n\n",
+                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), msgPart);
+        } else {
+            //send buf (the whole message) to proper node
+
+        }
+
+        //printf("Received packet from %s:%d\nData: %s\n\n",
+        //       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
 
         ++i;
     }
@@ -255,7 +270,7 @@ int main(int argc, char **argv) {
             //choose converter or atoi ??
             //receivingNode = toString(nodeNum);
             receivingNode = atoi(nodeNum);
-            printf("Receiving node is going to be (converted): %d\n.", receivingNode);
+            //printf("Receiving node is going to be (converted): %d\n.", receivingNode);
 
             si_other.sin_family = AF_INET;
 
@@ -272,13 +287,11 @@ int main(int argc, char **argv) {
                 exit(1);
             }
 
-            sprintf(buf, "%s\n", msgPart);
+            sprintf(buf, "%s\n", inputMsg);
             if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
                 diep("sendto()");
             printf("Send message to %s:%d\nData: %s\n\n",
                    inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
-        } else {
-            printf("Message not accepted.");
         }
     }
 
