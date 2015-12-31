@@ -74,16 +74,7 @@ void *clientThread(void *arg) {
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
 
-    int ii;
-    for (ii = 0; ii < connectionCount; ii++) {
-        memset((char *) &sis[ii], 0, sizeof(sis[ii]));
-        sis[ii].sin_family = AF_INET;
-        sis[ii].sin_port = htons(connections[ii].port);
-        if (inet_aton(connections[ii].ip_address, &sis[ii].sin_addr) == 0) {
-            fprintf(stderr, "inet_aton() failed 1\n");
-            exit(1);
-        }
-    }
+
 
     while (!got_sig) {
 //        sleep(1);
@@ -150,12 +141,44 @@ void *serverThread(void *arg) {
         if (strcmp(wholeMessage, clientMessage) == 0) {
             //received connecting packet, not a message
             //nodeNum contains number and the message if it exists
-            //printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
-            //  inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
+            printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
+              inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
             //updating routing table
             routingTable[receivedNode].cost = 1;
             routingTable[receivedNode].idOfTargetNode = receivedNode;
             routingTable[receivedNode].idOfNextNode = receivedNode;
+
+        } else if(strcmp(wholeMessage, updateMessage) == 0) {
+            // update nodeThatSentThisPacket targetNode cost -> recievedNode is nodeThatSentThisPacket
+//            msgPart is targetNode, msgPart2 is cost
+            char* msgPart2;
+            strtok_r(msgPart, " ", &msgPart2);
+            int targetNode = atoi(msgPart);
+            int cost = atoi(msgPart2);
+            cost++;//cost increased by one node
+
+            if(routingTable[targetNode].cost > cost){//updates routing table
+                routingTable[targetNode].cost = cost;
+                routingTable[targetNode].idOfNextNode = receivedNode;
+
+                int ii;
+                strcpy(wholeMessage, clientMessage);
+                char str[15];
+                sprintf(str, " %d", localId);
+                strcat(wholeMessage, str);
+                sprintf(buf, wholeMessage);
+                for (ii = 0; ii < connectionCount; ii++) {
+                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                        diep("sendto()");
+                    }
+
+                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
+                }
+
+
+            }
+
+
 
         } else {
             //received message
@@ -261,16 +284,27 @@ int main(int argc, char **argv) {
     pthread_t pthreadClient;    // this is our thread identifier
     int i = 0;
 
+    int ii;
+    for (ii = 0; ii < connectionCount; ii++) {
+        memset((char *) &sis[ii], 0, sizeof(sis[ii]));
+        sis[ii].sin_family = AF_INET;
+        sis[ii].sin_port = htons(connections[ii].port);
+        if (inet_aton(connections[ii].ip_address, &sis[ii].sin_addr) == 0) {
+            fprintf(stderr, "inet_aton() failed 1\n");
+            exit(1);
+        }
+    }
+
     pthread_create(&pthreadClient, NULL, clientThread, "foo");
 
     pthread_t pthreadServer;
 
     pthread_create(&pthreadServer, NULL, serverThread, "foo");
 
-    //printf("main is ready to run...\n");
-    //printf("main waiting for thread to terminate...\n");
+    printf("main is ready to run...\n");
+    printf("main waiting for thread to terminate...\n");
 
-    //printf("Ready to send messages.\n");
+    printf("Ready to send messages.\n");
 
     //accepting messages from stdin
 
