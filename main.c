@@ -20,8 +20,6 @@
 
 #define BUFLEN 512
 
-#define SRV_IP "127.0.0.1"
-
 bool verbosity = true; // should be passed as 3rd argument // already is (optional)
 char quiet[100] = "--quiet";
 int connectionCount = 100;
@@ -33,11 +31,12 @@ char inputMsg[128];
 
 RoutingTableItem routingTable[100];
 char clientMessage[100] = "connected";
-char sendingMessage[100] = "message ";
+char sendingMessage[100] = "message";
+char updateMessage[100] = "update";
 
 volatile sig_atomic_t got_sig;
 
-int toString(char []);
+int toInt(char []);
 
 //handling the sigint signal to terminate
 void sigintHandler(int sig) {
@@ -66,7 +65,6 @@ void diep(char *s) {
 void *clientThread(void *arg) {
     int i = 0;
 
-
     struct sockaddr_in si_other;
     struct sockaddr_in sis[100];
     int s, slen = sizeof(si_other);
@@ -81,12 +79,11 @@ void *clientThread(void *arg) {
         memset((char *) &sis[ii], 0, sizeof(sis[ii]));
         sis[ii].sin_family = AF_INET;
         sis[ii].sin_port = htons(connections[ii].port);
-        if (inet_aton(SRV_IP, &sis[ii].sin_addr) == 0) {
-            fprintf(stderr, "inet_aton() failed\n");
+        if (inet_aton(connections[ii].ip_address, &sis[ii].sin_addr) == 0) {
+            fprintf(stderr, "inet_aton() failed 1\n");
             exit(1);
         }
     }
-
 
     while (!got_sig) {
 //        sleep(1);
@@ -125,7 +122,7 @@ void *serverThread(void *arg) {
     char *nodeNum;
     char wholeMessage[128];//all three parts
     char *msgPart;
-    int receivingNode;
+    int receivedNode;
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
@@ -144,28 +141,36 @@ void *serverThread(void *arg) {
 
         strcpy(wholeMessage, buf);
 
-
         printf("whole message before converting: %s\n", wholeMessage);
 
         strtok_r(wholeMessage, " ", &nodeNum);
 
+        strtok_r(nodeNum, " ", &msgPart);
+        receivedNode = atoi(nodeNum);
+
         if (strcmp(wholeMessage, clientMessage) == 0) {
+            //received connecting packet, not a message
+            //nodeNum contains number and the message if it exists
             printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
                        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
-        } else {
+            //updating routing table
+            routingTable[receivedNode].cost = 1;
+            routingTable[receivedNode].idOfTargetNode = receivedNode;
+            routingTable[receivedNode].idOfNextNode = receivedNode;
 
-            strtok_r(nodeNum, " ", &msgPart);
-            receivingNode = atoi(nodeNum);
+        } else {
+            //received message
 
             printf("whole message: %s\n", wholeMessage);
             printf("nodeNum: %s\n", nodeNum);
             printf("msgPart: %s\n", msgPart);
 
-            if (receivingNode == localId) {
+            if (receivedNode == localId) {
                 printf("Received packet from %s:%d\nMessage: %s\n\n",
                        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), msgPart);
             } else {
                 //send buf (the whole message) to proper node
+
 
             }
         }
@@ -179,8 +184,8 @@ void *serverThread(void *arg) {
     return NULL;
 }
 
-//converts char array to string
-int toString(char a[]) {
+//converts char array to int
+int toInt(char *a) {
     int c, sign, offset, n;
 
     if (a[0] == '-') {  // Handle negative integers
@@ -266,7 +271,7 @@ int main(int argc, char **argv) {
     printf("main is ready to run...\n");
     printf("main waiting for thread to terminate...\n");
 
-    printf("Ready to send messages.");
+    printf("Ready to send messages.\n");
 
     //accepting messages from stdin
 
@@ -296,7 +301,7 @@ int main(int argc, char **argv) {
             printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart3);
             printf("Receiving node is going to be: %s\n.", nodeNum);
             //choose converter or atoi ??
-            //receivingNode = toString(nodeNum);
+            //receivingNode = toInt(nodeNum);
             receivingNode = atoi(nodeNum);
             //printf("Receiving node is going to be (converted): %d\n.", receivingNode);
 
@@ -306,15 +311,15 @@ int main(int argc, char **argv) {
             for (j = 0; j < connectionCount; j++) {
                 if (connections[j].id == receivingNode) {
                     si_other.sin_port = htons(connections[j].port);
+                    if (inet_aton(connections[j].ip_address, &si_other.sin_addr) == 0) {
+                        fprintf(stderr, "inet_aton() failed 2\n");
+                        exit(1);
+                    }
                     break;
                 }
             }
 
-            if (inet_aton(SRV_IP, &si_other.sin_addr) == 0) {
-                fprintf(stderr, "inet_aton() failed\n");
-                exit(1);
-            }
-
+            strcat(wholeMessage, " ");
             strcat(wholeMessage, inputMsg);
 
 //            sprintf(buf, "%s\n", inputMsg);
