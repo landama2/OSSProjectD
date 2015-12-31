@@ -19,26 +19,30 @@
 #include "main.h"
 
 #define BUFLEN 512
+#define MAXCOST 128
+#define LENGHTOFARRAY 100
 
 bool verbosity = true; // should be passed as 3rd argument // already is (optional)
-char quiet[100] = "--quiet";
-int connectionCount = 100;
+char quiet[LENGHTOFARRAY] = "--quiet";
+int connectionCount = LENGHTOFARRAY;
 int localPort;
-TConnection connections[100];
+TConnection connections[LENGHTOFARRAY];
 int localId;
 
 char inputMsg[128];
 
-volatile RoutingTableItem routingTable[100];
-char clientMessage[100] = "connected";
-char sendingMessage[100] = "message";
-char updateMessage[100] = "update";
+volatile RoutingTableItem routingTable[LENGHTOFARRAY];
+char clientMessage[LENGHTOFARRAY] = "connected";
+char sendingMessage[LENGHTOFARRAY] = "message";
+char updateMessage[LENGHTOFARRAY] = "update";
 
-volatile struct sockaddr_in sis[100];
+volatile struct sockaddr_in sis[LENGHTOFARRAY];
 
 volatile sig_atomic_t got_sig;
 
 int toInt(char []);
+
+void createUpdateMessage(char *buf, char *wholeMessage, const char *msgPart, int cost);
 
 //handling the sigint signal to terminate
 void sigintHandler(int sig) {
@@ -47,7 +51,7 @@ void sigintHandler(int sig) {
 }
 
 void verbPrintf(const char *format, ...) {
-    // va_list is a special type that allows handling of variable
+    // va_list is a special type that  allows handling of variable
     // length parameter list
     va_list args;
     va_start(args, format);
@@ -74,7 +78,6 @@ void *clientThread(void *arg) {
 
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
-
 
 
     while (!got_sig) {
@@ -104,10 +107,8 @@ void *clientThread(void *arg) {
 }
 
 void *serverThread(void *arg) {
-    char *str;
     int i = 0;
 
-    str = (char *) arg;
     struct sockaddr_in si_me, si_other;
     int s, slen = sizeof(si_other);
     char buf[BUFLEN];
@@ -144,43 +145,43 @@ void *serverThread(void *arg) {
         if (strcmp(wholeMessage, clientMessage) == 0) {
             //received connecting packet, not a message
             //nodeNum contains number and the message if it exists
-            printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
-              inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
+            verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
+                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
             //updating routing table
             routingTable[receivedNode].cost = 1;
             routingTable[receivedNode].idOfTargetNode = receivedNode;
             routingTable[receivedNode].idOfNextNode = receivedNode;
+            char str[15];
+            sprintf(str, " %d", receivedNode);
+            createUpdateMessage(buf, wholeMessage,str,1);
 
-        } else if(strcmp(wholeMessage, updateMessage) == 0) {
+        } else if (strcmp(wholeMessage, updateMessage) == 0) {
             // update nodeThatSentThisPacket targetNode cost -> recievedNode is nodeThatSentThisPacket
 //            msgPart is targetNode, msgPart2 is cost
-            char* msgPart2;
+            char *msgPart2;
             strtok_r(msgPart, " ", &msgPart2);
             int targetNode = atoi(msgPart);
             int cost = atoi(msgPart2);
             cost++;//cost increased by one node
 
-            if(routingTable[targetNode].cost > cost){//updates routing table
+            if (routingTable[targetNode].cost > cost) {//updates routing table
                 routingTable[targetNode].cost = cost;
                 routingTable[targetNode].idOfNextNode = receivedNode;
 
-                int ii;
-                strcpy(wholeMessage, clientMessage);
-                char str[15];
-                sprintf(str, " %d", localId);
-                strcat(wholeMessage, str);
-                sprintf(buf, wholeMessage);
+                int ii;//creating update message from recived update message
+                createUpdateMessage(buf, wholeMessage, msgPart, cost);
+                printf("%s",buf);
                 for (ii = 0; ii < connectionCount; ii++) {
                     if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                         diep("sendto()");
                     }
 
-                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
+                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                               ntohs(sis[ii].sin_port), buf);
                 }
 
 
             }
-
 
 
         } else {
@@ -196,6 +197,28 @@ void *serverThread(void *arg) {
             } else {
                 //send buf (the whole message) to proper node
 
+                int j;
+                for (j = 0; j < LENGHTOFARRAY; j++) {
+                    if (routingTable[j].idOfTargetNode == receivedNode) {
+                        int nextNode = routingTable[j].idOfNextNode;
+                        int k;
+                        for (k = 0; k < connectionCount; k++) {
+                            if (connections[k].id == nextNode) {
+                                si_other.sin_port = htons(connections[k].port);
+                                if (inet_aton(connections[k].ip_address, &si_other.sin_addr) == 0) {
+                                    fprintf(stderr, "inet_aton() failed 2\n");
+                                    exit(1);
+                                }
+                                break;
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1) {
+                    diep("sendto()");
+                }
 
             }
         }
@@ -207,6 +230,20 @@ void *serverThread(void *arg) {
     }
     close(s);
     return NULL;
+}
+
+void createUpdateMessage(char *buf, char *wholeMessage, const char *msgPart, int cost) {
+    strcpy(wholeMessage, updateMessage);
+    char str[15];
+    char str2[15];
+    sprintf(str, " %d", localId);
+    strcat(wholeMessage, str);
+    strcat(wholeMessage, " ");
+    strcat(wholeMessage, msgPart);
+    strcat(wholeMessage, " ");
+    sprintf(str2, " %d", cost);
+    strcat(wholeMessage, str2);
+    sprintf(buf, wholeMessage);
 }
 
 //converts char array to int
@@ -248,6 +285,10 @@ int main(int argc, char **argv) {
             verbosity = false;
         }
 
+    } else if (argc > 2) {
+        if (strcmp(argv[2], quiet) == 0) {
+            verbosity = false;
+        }
     }
 
     //handling the signal from CTRL+C
@@ -298,6 +339,10 @@ int main(int argc, char **argv) {
         }
     }
 
+    for (ii = 0; ii < LENGHTOFARRAY; ii++) {
+        routingTable[ii].cost = MAXCOST;
+    }
+
     pthread_create(&pthreadClient, NULL, clientThread, "foo");
 
     pthread_t pthreadServer;
@@ -344,16 +389,31 @@ int main(int argc, char **argv) {
             si_other.sin_family = AF_INET;
 
             //find the port
-            for (j = 0; j < connectionCount; j++) {
-                if (connections[j].id == receivingNode) {
-                    si_other.sin_port = htons(connections[j].port);
-                    if (inet_aton(connections[j].ip_address, &si_other.sin_addr) == 0) {
-                        fprintf(stderr, "inet_aton() failed 2\n");
-                        exit(1);
+            for (j = 0; j < LENGHTOFARRAY; j++) {
+                if (routingTable[j].idOfTargetNode == receivingNode) {
+                    int nextNode = routingTable[j].idOfNextNode;
+                    int k;
+                    for (k = 0; k < connectionCount; k++) {
+                        if (connections[k].id == nextNode) {
+                            si_other.sin_port = htons(connections[k].port);
+                            if (inet_aton(connections[k].ip_address, &si_other.sin_addr) == 0) {
+                                fprintf(stderr, "inet_aton() failed 2\n");
+                                exit(1);
+                            }
+                            break;
+                        }
                     }
                     break;
                 }
             }
+//                if (connections[j].id == receivingNode) {
+//                    si_other.sin_port = htons(connections[j].port);
+//                    if (inet_aton(connections[j].ip_address, &si_other.sin_addr) == 0) {
+//                        fprintf(stderr, "inet_aton() failed 2\n");
+//                        exit(1);
+//                    }
+//                    break;
+//                }
 
             strcat(wholeMessage, " ");
             strcat(wholeMessage, inputMsg);

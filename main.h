@@ -11,4 +11,5 @@ typedef struct {
     int cost;
 } RoutingTableItem;
 
+static const int MAX = 100;
 #endif //OSSPROJECTD_MAIN_H
