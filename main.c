@@ -87,7 +87,7 @@ void *clientThread(void *arg) {
 
     while (!got_sig) {
 //        sleep(1);
-        printf("Sending packet %d\n", i);
+        //printf("Sending packet %d\n", i);
 //        sprintf(buf, "This is packet %d\n", i);
         strcpy(wholeMessage, clientMessage);
         char str[15];
@@ -135,13 +135,12 @@ void *serverThread(void *arg) {
         diep("bind");
 
     while (!got_sig) {
-        sleep(1);
         if (recvfrom(s, buf, BUFLEN, 0, &si_other, &slen) == -1)
             diep("recvfrom()");
 
         strcpy(wholeMessage, buf);
 
-        printf("whole message before converting: %s\n", wholeMessage);
+        //printf("whole message before converting: %s\n", wholeMessage);
 
         strtok_r(wholeMessage, " ", &nodeNum);
 
@@ -151,8 +150,8 @@ void *serverThread(void *arg) {
         if (strcmp(wholeMessage, clientMessage) == 0) {
             //received connecting packet, not a message
             //nodeNum contains number and the message if it exists
-            printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
-                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
+            //printf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
+            //  inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
             //updating routing table
             routingTable[receivedNode].cost = 1;
             routingTable[receivedNode].idOfTargetNode = receivedNode;
@@ -161,9 +160,9 @@ void *serverThread(void *arg) {
         } else {
             //received message
 
-            printf("whole message: %s\n", wholeMessage);
-            printf("nodeNum: %s\n", nodeNum);
-            printf("msgPart: %s\n", msgPart);
+            //printf("whole message: %s\n", wholeMessage);
+            //printf("nodeNum: %s\n", nodeNum);
+            //printf("msgPart: %s\n", msgPart);
 
             if (receivedNode == localId) {
                 printf("Received packet from %s:%d\nMessage: %s\n\n",
@@ -268,10 +267,10 @@ int main(int argc, char **argv) {
 
     pthread_create(&pthreadServer, NULL, serverThread, "foo");
 
-    printf("main is ready to run...\n");
-    printf("main waiting for thread to terminate...\n");
+    //printf("main is ready to run...\n");
+    //printf("main waiting for thread to terminate...\n");
 
-    printf("Ready to send messages.\n");
+    //printf("Ready to send messages.\n");
 
     //accepting messages from stdin
 
@@ -289,7 +288,7 @@ int main(int argc, char **argv) {
         if (fgets(inputMsg, 128, stdin) != NULL) {
 
             //sending message to desired port
-            printf("Message to send: %s\n", inputMsg);
+            //printf("Message to send: %s\n", inputMsg);
 
             //separate parts of the message
             char nodeNum[128];// also msgPart2
@@ -298,8 +297,8 @@ int main(int argc, char **argv) {
             strcpy(wholeMessage, sendingMessage);
             strcpy(nodeNum, inputMsg);
             strtok_r(nodeNum, " ", &msgPart3);
-            printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart3);
-            printf("Receiving node is going to be: %s\n.", nodeNum);
+            //printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart3);
+            //printf("Receiving node is going to be: %s\n.", nodeNum);
             //choose converter or atoi ??
             //receivingNode = toInt(nodeNum);
             receivingNode = atoi(nodeNum);
