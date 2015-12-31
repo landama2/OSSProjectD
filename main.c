@@ -29,10 +29,12 @@ int localId;
 
 char inputMsg[128];
 
-RoutingTableItem routingTable[100];
+volatile RoutingTableItem routingTable[100];
 char clientMessage[100] = "connected";
 char sendingMessage[100] = "message";
 char updateMessage[100] = "update";
+
+volatile struct sockaddr_in sis[100];
 
 volatile sig_atomic_t got_sig;
 
@@ -66,7 +68,6 @@ void *clientThread(void *arg) {
     int i = 0;
 
     struct sockaddr_in si_other;
-    struct sockaddr_in sis[100];
     int s, slen = sizeof(si_other);
     char buf[BUFLEN];
     char wholeMessage[BUFLEN];
@@ -85,6 +86,8 @@ void *clientThread(void *arg) {
         sprintf(str, " %d", localId);
         strcat(wholeMessage, str);
         sprintf(buf, wholeMessage);
+
+        int ii;
         for (ii = 0; ii < connectionCount; ii++) {
             if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                 diep("sendto()");
