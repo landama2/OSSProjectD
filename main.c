@@ -42,7 +42,8 @@ volatile sig_atomic_t got_sig;
 
 int toInt(char []);
 
-void createUpdateMessage(char *buf, char *wholeMessage, const char *msgPart, int cost);
+//void createUpdateMessage(char *buf, char *wholeMessage, char *msgPart, int cost);
+void createUpdateMessage(char *buf, char *wholeMessage, int msgPart, int cost);
 
 //handling the sigint signal to terminate
 void sigintHandler(int sig) {
@@ -80,15 +81,16 @@ void *clientThread(void *arg) {
         diep("socket");
 
 
+    strcpy(wholeMessage, clientMessage);
+    char str[15];
+    sprintf(str, " %d", localId);
+    strcat(wholeMessage, str);
+    sprintf(buf, wholeMessage);
+
     while (!got_sig) {
 //        sleep(1);
         //printf("Sending packet %d\n", i);
 //        sprintf(buf, "This is packet %d\n", i);
-        strcpy(wholeMessage, clientMessage);
-        char str[15];
-        sprintf(str, " %d", localId);
-        strcat(wholeMessage, str);
-        sprintf(buf, wholeMessage);
 
         int ii;
         for (ii = 0; ii < connectionCount; ii++) {
@@ -145,15 +147,43 @@ void *serverThread(void *arg) {
         if (strcmp(wholeMessage, clientMessage) == 0) {
             //received connecting packet, not a message
             //nodeNum contains number and the message if it exists
-            verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s\n\n",
-                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage);
+            verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s %d\n\n",
+                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage,receivedNode);
             //updating routing table
             routingTable[receivedNode].cost = 1;
             routingTable[receivedNode].idOfTargetNode = receivedNode;
             routingTable[receivedNode].idOfNextNode = receivedNode;
+//            char str[15];
+//            sprintf(str, " %d", receivedNode);
+//            createUpdateMessage(buf, wholeMessage,str,1);
+
+//            createUpdateMessage(buf, &wholeMessage,receivedNode,1);
+
+
+            //!!
+            strcpy(wholeMessage, updateMessage);
             char str[15];
-            sprintf(str, " %d", receivedNode);
-            createUpdateMessage(buf, wholeMessage,str,1);
+            char str2[15];
+            char strmsgPart[15];
+            sprintf(str, " %d", localId);
+            strcat(wholeMessage, str);
+            sprintf(strmsgPart, " %d", receivedNode);
+            strcat(wholeMessage, strmsgPart);
+            sprintf(str2, " %d", 1);
+            strcat(wholeMessage, str2);
+            sprintf(buf, wholeMessage);
+            //!!
+
+            verbPrintf(buf);
+            int ii;
+            for (ii = 0; ii < connectionCount; ii++) {
+                if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                    diep("sendto()");
+                }
+
+                verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                           ntohs(sis[ii].sin_port), buf);
+            }
 
         } else if (strcmp(wholeMessage, updateMessage) == 0) {
             // update nodeThatSentThisPacket targetNode cost -> recievedNode is nodeThatSentThisPacket
@@ -162,15 +192,33 @@ void *serverThread(void *arg) {
             strtok_r(msgPart, " ", &msgPart2);
             int targetNode = atoi(msgPart);
             int cost = atoi(msgPart2);
+//            printf("!!!%s",msgPart);
             cost++;//cost increased by one node
 
             if (routingTable[targetNode].cost > cost) {//updates routing table
                 routingTable[targetNode].cost = cost;
                 routingTable[targetNode].idOfNextNode = receivedNode;
 
-                int ii;//creating update message from recived update message
-                createUpdateMessage(buf, wholeMessage, msgPart, cost);
-                printf("%s",buf);
+                //creating update message from recived update message
+//                createUpdateMessage(buf, wholeMessage, msgPart, cost);
+//                createUpdateMessage(buf, &wholeMessage, targetNode, cost);
+
+                //!!
+                strcpy(wholeMessage, updateMessage);
+                char str[15];
+                char str2[15];
+                char strmsgPart[15];
+                sprintf(str, " %d", localId);
+                strcat(wholeMessage, str);
+                sprintf(strmsgPart, " %d", targetNode);
+                strcat(wholeMessage, strmsgPart);
+                sprintf(str2, " %d", cost);
+                strcat(wholeMessage, str2);
+                sprintf(buf, wholeMessage);
+                //!!
+
+                printf("Update message from line 184: %s\n",buf);
+                int ii;
                 for (ii = 0; ii < connectionCount; ii++) {
                     if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                         diep("sendto()");
@@ -209,10 +257,10 @@ void *serverThread(void *arg) {
                                     fprintf(stderr, "inet_aton() failed 2\n");
                                     exit(1);
                                 }
-                                break;
+                                  break;
                             }
-                            break;
                         }
+                        break;
                     }
                 }
 
@@ -232,15 +280,29 @@ void *serverThread(void *arg) {
     return NULL;
 }
 
-void createUpdateMessage(char *buf, char *wholeMessage, const char *msgPart, int cost) {
+//void createUpdateMessage(char *buf, char *wholeMessage, char *msgPart, int cost) {//buggy not sure why
+//    strcpy(wholeMessage, updateMessage);
+//    char str[15];
+//    char str2[15];
+//    sprintf(str, " %d", localId);
+//    strcat(wholeMessage, str);
+//    strcat(wholeMessage, " ");
+//    strcat(wholeMessage, msgPart);
+//    strcat(wholeMessage, " ");
+//    sprintf(str2, " %d", cost);
+//    strcat(wholeMessage, str2);
+//    sprintf(buf, wholeMessage);
+//}
+
+void createUpdateMessage(char *buf, char *wholeMessage, int msgPart, int cost) {
     strcpy(wholeMessage, updateMessage);
     char str[15];
     char str2[15];
+    char strmsgPart[15];
     sprintf(str, " %d", localId);
     strcat(wholeMessage, str);
-    strcat(wholeMessage, " ");
-    strcat(wholeMessage, msgPart);
-    strcat(wholeMessage, " ");
+    sprintf(str2, " %d", msgPart);
+    strcat(wholeMessage, strmsgPart);
     sprintf(str2, " %d", cost);
     strcat(wholeMessage, str2);
     sprintf(buf, wholeMessage);
