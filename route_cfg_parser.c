@@ -57,6 +57,7 @@ int parseRouteConfiguration(const char * fileName, int localId, int * localPort,
 			if (parse_word(&l, tmp, tmp_size)) {
 				if (strcmp(tmp, "node") == 0) {
 					TConnection c;
+					c.secSinceLastPacket = 0;
 					if (parse_word(&l, tmp, tmp_size)) {
 						c.id = atoi(tmp);
 					} else c.id = 0;

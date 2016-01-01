@@ -15,6 +15,7 @@ typedef struct {
 	int id;
 	int port;
 	char ip_address[IP_ADDRESS_MAX_LENGTH];
+	int secSinceLastPacket;
 } TConnection;
 
 

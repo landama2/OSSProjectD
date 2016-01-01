@@ -29,6 +29,8 @@ int localPort;
 TConnection connections[LENGHTOFARRAY];
 int localId;
 
+bool connectionsAvailable[LENGHTOFARRAY];
+
 char inputMsg[128];
 
 volatile RoutingTableItem routingTable[LENGHTOFARRAY];
@@ -102,6 +104,51 @@ void *clientThread(void *arg) {
         }
 
         i = i + 1 % 200000;
+
+        for (ii = 0; ii < connectionCount; ii++) {
+            if (connectionsAvailable[ii]) {
+                connections[ii].secSinceLastPacket++;
+                if (connections[ii].secSinceLastPacket > 5) {
+                    connectionsAvailable[ii] = false;
+                    int k;
+                    for (k = 0; k < LENGHTOFARRAY; k++) {
+                        if (routingTable[k].idOfTargetNode == connections[ii].id) {
+                            if (routingTable[k].idOfTargetNode != 0) {
+                                routingTable[k].cost = MAXCOST;
+
+                                //!!
+                                strcpy(wholeMessage, updateMessage);
+                                char str[15];
+                                char str2[15];
+                                char strmsgPart[15];
+                                sprintf(str, " %d", localId);
+                                strcat(wholeMessage, str);
+                                sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
+                                strcat(wholeMessage, strmsgPart);
+                                sprintf(str2, " %d", MAXCOST);
+                                strcat(wholeMessage, str2);
+                                sprintf(buf, wholeMessage);
+                                //!!
+
+                                verbPrintf(buf);
+//            int ii;
+                                for (ii = 0; ii < connectionCount; ii++) {
+                                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                                        diep("sendto()");
+                                    }
+
+                                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                                               ntohs(sis[ii].sin_port), buf);
+                                }
+
+
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
         sleep(1);
     }
     close(s);
@@ -148,11 +195,19 @@ void *serverThread(void *arg) {
             //received connecting packet, not a message
             //nodeNum contains number and the message if it exists
             verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s %d\n\n",
-                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage,receivedNode);
+                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage, receivedNode);
             //updating routing table
             routingTable[receivedNode].cost = 1;
             routingTable[receivedNode].idOfTargetNode = receivedNode;
             routingTable[receivedNode].idOfNextNode = receivedNode;
+
+            int ii;
+            for (ii = 0; ii < connectionCount; ii++) {
+                if (connections[ii].id == receivedNode) {
+                    connections[ii].secSinceLastPacket = 0;
+                    connectionsAvailable[ii] = true;
+                }
+            }
 //            char str[15];
 //            sprintf(str, " %d", receivedNode);
 //            createUpdateMessage(buf, wholeMessage,str,1);
@@ -175,7 +230,7 @@ void *serverThread(void *arg) {
             //!!
 
             verbPrintf(buf);
-            int ii;
+//            int ii;
             for (ii = 0; ii < connectionCount; ii++) {
                 if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                     diep("sendto()");
@@ -217,7 +272,7 @@ void *serverThread(void *arg) {
                 sprintf(buf, wholeMessage);
                 //!!
 
-                printf("Update message from line 184: %s\n",buf);
+                printf("Update message from line 184: %s\n", buf);
                 int ii;
                 for (ii = 0; ii < connectionCount; ii++) {
                     if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
@@ -227,6 +282,36 @@ void *serverThread(void *arg) {
                     verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
                                ntohs(sis[ii].sin_port), buf);
                 }
+
+
+            } else if (cost >= MAXCOST) {
+
+                strcpy(wholeMessage, updateMessage);
+                char str[15];
+                char str2[15];
+                char strmsgPart[15];
+                sprintf(str, " %d", localId);
+                strcat(wholeMessage, str);
+                sprintf(strmsgPart, " %d", targetNode);
+                strcat(wholeMessage, strmsgPart);
+                sprintf(str2, " %d", MAXCOST);
+                strcat(wholeMessage, str2);
+                sprintf(buf, wholeMessage);
+                //!!
+
+                printf("Update message from line 294(MAXCOST): %s\n", buf);
+                int ii;
+                for (ii = 0; ii < connectionCount; ii++) {
+                    if (connectionsAvailable[ii]) {
+                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                        diep("sendto()");
+                    }
+
+                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                               ntohs(sis[ii].sin_port), buf);
+                        connectionsAvailable[ii] = false;
+                }
+            }
 
 
             }
@@ -257,7 +342,7 @@ void *serverThread(void *arg) {
                                     fprintf(stderr, "inet_aton() failed 2\n");
                                     exit(1);
                                 }
-                                  break;
+                                break;
                             }
                         }
                         break;
@@ -402,6 +487,7 @@ int main(int argc, char **argv) {
     }
 
     for (ii = 0; ii < LENGHTOFARRAY; ii++) {
+        connectionsAvailable[ii] = false;
         routingTable[ii].cost = MAXCOST;
     }
 
@@ -418,6 +504,8 @@ int main(int argc, char **argv) {
 
     //accepting messages from stdin
 
+    bool sendMessage;
+
     struct sockaddr_in si_other;
     int s, slen = sizeof(si_other);
     char buf[BUFLEN];
@@ -430,6 +518,8 @@ int main(int argc, char **argv) {
     //reading and sending msgs
     while (!got_sig) {
         if (fgets(inputMsg, 128, stdin) != NULL) {
+
+            sendMessage = false;
 
             //sending message to desired port
             //printf("Message to send: %s\n", inputMsg);
@@ -458,7 +548,13 @@ int main(int argc, char **argv) {
             for (j = 0; j < LENGHTOFARRAY; j++) {
                 if (routingTable[j].idOfTargetNode == receivingNode) {
                     int nextNode = routingTable[j].idOfNextNode;
-                    printf("NEXT NODE: %d",nextNode);
+                    if (routingTable[j].cost == MAXCOST) {
+                        sendMessage = false;
+                        break;
+                    } else {
+                        sendMessage = true;
+                    }
+                    printf("NEXT NODE: %d", nextNode);
                     int k;
                     for (k = 0; k < connectionCount; k++) {
                         if (connections[k].id == nextNode) {
@@ -485,10 +581,15 @@ int main(int argc, char **argv) {
 
 //            sprintf(buf, "%s\n", inputMsg);
             sprintf(buf, "%s\n", wholeMessage);
-            if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
-                diep("sendto()");
-            printf("Send message to %s:%d\nData: %s\n\n",
-                   inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+            if (sendMessage) {
+                if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
+                    diep("sendto()");
+                printf("Send message to %s:%d\nData: %s\n\n",
+                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
+            } else {
+                printf("Message cannot be send!\n");
+            }
+
         }
     }
 
