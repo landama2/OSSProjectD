@@ -116,29 +116,32 @@ void *clientThread(void *arg) {
                             if (routingTable[k].idOfTargetNode != 0) {
                                 routingTable[k].cost = MAXCOST;
 
+                                char buf2[BUFLEN];
+                                char wholeMessage2[BUFLEN];
+
                                 //!!
-                                strcpy(wholeMessage, updateMessage);
+                                strcpy(wholeMessage2, updateMessage);
                                 char str[15];
                                 char str2[15];
                                 char strmsgPart[15];
                                 sprintf(str, " %d", localId);
-                                strcat(wholeMessage, str);
+                                strcat(wholeMessage2, str);
                                 sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
-                                strcat(wholeMessage, strmsgPart);
+                                strcat(wholeMessage2, strmsgPart);
                                 sprintf(str2, " %d", MAXCOST);
-                                strcat(wholeMessage, str2);
-                                sprintf(buf, wholeMessage);
+                                strcat(wholeMessage2, str2);
+                                sprintf(buf2, wholeMessage2);
                                 //!!
 
-                                verbPrintf(buf);
+                                verbPrintf(buf2);
 //            int ii;
                                 for (ii = 0; ii < connectionCount; ii++) {
-                                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                                    if (sendto(s, buf2, BUFLEN, 0, &sis[ii], slen) == -1) {
                                         diep("sendto()");
                                     }
 
                                     verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                                               ntohs(sis[ii].sin_port), buf);
+                                               ntohs(sis[ii].sin_port), buf2);
                                 }
 
 
@@ -201,13 +204,6 @@ void *serverThread(void *arg) {
             routingTable[receivedNode].idOfTargetNode = receivedNode;
             routingTable[receivedNode].idOfNextNode = receivedNode;
 
-            int ii;
-            for (ii = 0; ii < connectionCount; ii++) {
-                if (connections[ii].id == receivedNode) {
-                    connections[ii].secSinceLastPacket = 0;
-                    connectionsAvailable[ii] = true;
-                }
-            }
 //            char str[15];
 //            sprintf(str, " %d", receivedNode);
 //            createUpdateMessage(buf, wholeMessage,str,1);
@@ -216,6 +212,8 @@ void *serverThread(void *arg) {
 
 
             //!!
+
+
             strcpy(wholeMessage, updateMessage);
             char str[15];
             char str2[15];
@@ -230,14 +228,34 @@ void *serverThread(void *arg) {
             //!!
 
             verbPrintf(buf);
+
+
+            int ii;
+
+
 //            int ii;
             for (ii = 0; ii < connectionCount; ii++) {
-                if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
-                    diep("sendto()");
-                }
+                if (connections[ii].id == receivedNode) {
+                    connections[ii].secSinceLastPacket = 0;
 
-                verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                           ntohs(sis[ii].sin_port), buf);
+
+                    if(!connectionsAvailable[ii]) {
+                        for (ii = 0; ii < connectionCount; ii++) {
+
+                            if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                                diep("sendto()");
+                            }
+
+
+                            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                                       ntohs(sis[ii].sin_port), buf);
+
+                        }
+                    }
+
+
+                    connectionsAvailable[ii] = true;
+                }
             }
 
         } else if (strcmp(wholeMessage, updateMessage) == 0) {
@@ -247,7 +265,7 @@ void *serverThread(void *arg) {
             strtok_r(msgPart, " ", &msgPart2);
             int targetNode = atoi(msgPart);
             int cost = atoi(msgPart2);
-//            printf("!!!%s",msgPart);
+//            printf("!!!%s\n",msgPart);
             cost++;//cost increased by one node
 
             if (routingTable[targetNode].cost > cost) {//updates routing table
@@ -303,15 +321,16 @@ void *serverThread(void *arg) {
                 int ii;
                 for (ii = 0; ii < connectionCount; ii++) {
                     if (connectionsAvailable[ii]) {
-                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
-                        diep("sendto()");
-                    }
 
-                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                               ntohs(sis[ii].sin_port), buf);
+                        if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                            diep("sendto()");
+                        }
+
+                        verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                                   ntohs(sis[ii].sin_port), buf);
                         connectionsAvailable[ii] = false;
+                    }
                 }
-            }
 
 
             }
@@ -548,11 +567,11 @@ int main(int argc, char **argv) {
             for (j = 0; j < LENGHTOFARRAY; j++) {
                 if (routingTable[j].idOfTargetNode == receivingNode) {
                     int nextNode = routingTable[j].idOfNextNode;
-                    if (routingTable[j].cost == MAXCOST) {
-                        sendMessage = false;
+                    if (routingTable[j].cost != MAXCOST) {
+                        sendMessage = true;
                         break;
                     } else {
-                        sendMessage = true;
+                        sendMessage = false;
                     }
                     printf("NEXT NODE: %d", nextNode);
                     int k;
