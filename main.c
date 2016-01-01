@@ -240,15 +240,16 @@ void *serverThread(void *arg) {
 
 
                     if(!connectionsAvailable[ii]) {
-                        for (ii = 0; ii < connectionCount; ii++) {
+                        int j;
+                        for (j = 0; j < connectionCount; j++) {
 
-                            if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                            if (sendto(s, buf, BUFLEN, 0, &sis[j], slen) == -1) {
                                 diep("sendto()");
                             }
 
 
-                            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                                       ntohs(sis[ii].sin_port), buf);
+                            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[j].sin_addr),
+                                       ntohs(sis[j].sin_port), buf);
 
                         }
                     }
@@ -271,6 +272,7 @@ void *serverThread(void *arg) {
             if (routingTable[targetNode].cost > cost) {//updates routing table
                 routingTable[targetNode].cost = cost;
                 routingTable[targetNode].idOfNextNode = receivedNode;
+                routingTable[targetNode].idOfTargetNode = targetNode;
 
                 //creating update message from recived update message
 //                createUpdateMessage(buf, wholeMessage, msgPart, cost);
@@ -442,6 +444,9 @@ int toInt(char *a) {
 
 
 int main(int argc, char **argv) {
+
+    bool readFromFile = true;
+
     if (argc < 2) {
         fprintf(stderr, "Not enough arguments\nUsage: %s <ID> [ <cfg-file-name> ]\n", argv[0]);
         return -1;
@@ -454,6 +459,8 @@ int main(int argc, char **argv) {
     } else if (argc > 2) {
         if (strcmp(argv[2], quiet) == 0) {
             verbosity = false;
+            readFromFile = false;
+
         }
     }
 
@@ -472,7 +479,7 @@ int main(int argc, char **argv) {
 
     localId = atoi(argv[1]);
     verbPrintf("\n%s\n", argv[2]);
-    int result = parseRouteConfiguration((argc > 2) ? argv[2] : NULL, localId, &localPort, &connectionCount,
+    int result = parseRouteConfiguration(((argc > 2) && readFromFile) ? argv[2] : NULL, localId, &localPort, &connectionCount,
                                          connections);
     if (result) {
         verbPrintf("OK, local port: %d\n", localPort);
@@ -569,7 +576,6 @@ int main(int argc, char **argv) {
                     int nextNode = routingTable[j].idOfNextNode;
                     if (routingTable[j].cost != MAXCOST) {
                         sendMessage = true;
-                        break;
                     } else {
                         sendMessage = false;
                     }
@@ -607,6 +613,13 @@ int main(int argc, char **argv) {
                        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
             } else {
                 printf("Message cannot be send!\n");
+                printf(wholeMessage);
+                int l;
+                for(l = 0; l < 10; l++){
+                    printf("target node: %d ", routingTable[l].idOfTargetNode);
+                    printf("next node: %d ", routingTable[l].idOfNextNode);
+                    printf("cost: %d\n", routingTable[l].cost);
+                }
             }
 
         }
