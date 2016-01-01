@@ -335,6 +335,13 @@ void *serverThread(void *arg) {
                 }
 
 
+                int k;
+                for(k = 0; k<LENGHTOFARRAY; k++){
+                    if(routingTable[k].idOfTargetNode == targetNode){
+                        routingTable[k].cost = MAXCOST;
+                        break;
+                    }
+                }
             }
 
 
