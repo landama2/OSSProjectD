@@ -101,7 +101,14 @@ int parseRouteConfiguration(const char * fileName, int localId, int * localPort,
 								connections[(*connectionCount)++] = allConnections[i];
 							}
 						}
-					}
+					} else if (id_server == localId) {//ADDED PART
+						int i;
+						for (i=0; i<allConnectionCount; i++) {
+							if (allConnections[i].id == id_client) {
+								connections[(*connectionCount)++] = allConnections[i];
+							}
+						}
+					} //ADDED PART
 				} else {
 					fprintf(stderr, "CFG_PARSER: [ERROR] invalid configuration line '%s'\n", line);
 					result = 0;

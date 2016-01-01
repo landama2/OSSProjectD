@@ -439,6 +439,8 @@ int main(int argc, char **argv) {
             char *msgPart3;
             char wholeMessage[128];
             strcpy(wholeMessage, sendingMessage);
+            strcat(wholeMessage, " ");
+            strcat(wholeMessage, inputMsg);
             strcpy(nodeNum, inputMsg);
             strtok_r(nodeNum, " ", &msgPart3);
             //printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart3);
@@ -451,9 +453,12 @@ int main(int argc, char **argv) {
             si_other.sin_family = AF_INET;
 
             //find the port
+
+//            printf("COnnection count: %d",connectionCount);
             for (j = 0; j < LENGHTOFARRAY; j++) {
                 if (routingTable[j].idOfTargetNode == receivingNode) {
                     int nextNode = routingTable[j].idOfNextNode;
+                    printf("NEXT NODE: %d",nextNode);
                     int k;
                     for (k = 0; k < connectionCount; k++) {
                         if (connections[k].id == nextNode) {
@@ -477,8 +482,6 @@ int main(int argc, char **argv) {
 //                    break;
 //                }
 
-            strcat(wholeMessage, " ");
-            strcat(wholeMessage, inputMsg);
 
 //            sprintf(buf, "%s\n", inputMsg);
             sprintf(buf, "%s\n", wholeMessage);
