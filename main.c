@@ -21,6 +21,7 @@
 #define BUFLEN 512
 #define MAXCOST 128
 #define LENGHTOFARRAY 100
+#define TIMEOUT 5
 
 bool verbosity = true; // should be passed as 3rd argument // already is (optional)
 char quiet[LENGHTOFARRAY] = "--quiet";
@@ -39,6 +40,7 @@ char sendingMessage[LENGHTOFARRAY] = "message";
 char updateMessage[LENGHTOFARRAY] = "update";
 
 volatile struct sockaddr_in sis[LENGHTOFARRAY];
+
 
 volatile sig_atomic_t got_sig;
 
@@ -108,7 +110,7 @@ void *clientThread(void *arg) {
         for (ii = 0; ii < connectionCount; ii++) {
             if (connectionsAvailable[ii]) {
                 connections[ii].secSinceLastPacket++;
-                if (connections[ii].secSinceLastPacket > 5) {
+                if (connections[ii].secSinceLastPacket > TIMEOUT) {
                     connectionsAvailable[ii] = false;
                     int k;
                     for (k = 0; k < LENGHTOFARRAY; k++) {
@@ -278,30 +280,48 @@ void *serverThread(void *arg) {
 //                createUpdateMessage(buf, wholeMessage, msgPart, cost);
 //                createUpdateMessage(buf, &wholeMessage, targetNode, cost);
 
-                //!!
-                strcpy(wholeMessage, updateMessage);
-                char str[15];
-                char str2[15];
-                char strmsgPart[15];
-                sprintf(str, " %d", localId);
-                strcat(wholeMessage, str);
-                sprintf(strmsgPart, " %d", targetNode);
-                strcat(wholeMessage, strmsgPart);
-                sprintf(str2, " %d", cost);
-                strcat(wholeMessage, str2);
-                sprintf(buf, wholeMessage);
-                //!!
+//                //!!
+//                strcpy(wholeMessage, updateMessage);
+//                char str[15];
+//                char str2[15];
+//                char strmsgPart[15];
+//                sprintf(str, " %d", localId);
+//                strcat(wholeMessage, str);
+//                sprintf(strmsgPart, " %d", targetNode);
+//                strcat(wholeMessage, strmsgPart);
+//                sprintf(str2, " %d", cost);
+//                strcat(wholeMessage, str2);
+//                sprintf(buf, wholeMessage);
+//                //!!
 
                 printf("Update message from line 184: %s\n", buf);
-                int ii;
-                for (ii = 0; ii < connectionCount; ii++) {
-                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
-                        diep("sendto()");
+                int a;
+                for (a = 0; a < LENGHTOFARRAY; a++) {
+                    strcpy(wholeMessage, updateMessage);
+                    char str[15];
+                    char str2[15];
+                    char strmsgPart[15];
+                    sprintf(str, " %d", localId);
+                    strcat(wholeMessage, str);
+                    sprintf(strmsgPart, " %d", routingTable[a].idOfTargetNode);
+                    strcat(wholeMessage, strmsgPart);
+                    sprintf(str2, " %d", routingTable[a].cost);
+                    strcat(wholeMessage, str2);
+                    sprintf(buf, wholeMessage);
+
+                    int ii;
+                    for (ii = 0; ii < connectionCount; ii++) {
+                        if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                            diep("sendto()");
+                        }
+
+                        verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                                   ntohs(sis[ii].sin_port), buf);
                     }
 
-                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                               ntohs(sis[ii].sin_port), buf);
+
                 }
+
 
 
             } else if (cost >= MAXCOST) {
@@ -318,11 +338,22 @@ void *serverThread(void *arg) {
                 strcat(wholeMessage, str2);
                 sprintf(buf, wholeMessage);
                 //!!
-
+                bool alreadyKnown = false;
+                int k;
+                for(k = 0; k<LENGHTOFARRAY; k++){
+                    if(routingTable[k].idOfTargetNode == targetNode){
+                        if(routingTable[k].cost == MAXCOST){
+                            alreadyKnown = true;
+                        }
+                        routingTable[k].cost = MAXCOST;
+                        break;
+                    }
+                }
                 printf("Update message from line 294(MAXCOST): %s\n", buf);
-                int ii;
-                for (ii = 0; ii < connectionCount; ii++) {
-                    if (connectionsAvailable[ii]) {
+                if(!alreadyKnown){
+                    int ii;
+                    for (ii = 0; ii < connectionCount; ii++) {
+                        //if (connectionsAvailable[ii]) {
 
                         if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                             diep("sendto()");
@@ -330,18 +361,14 @@ void *serverThread(void *arg) {
 
                         verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
                                    ntohs(sis[ii].sin_port), buf);
-                        connectionsAvailable[ii] = false;
+                        //    connectionsAvailable[ii] = false;
+                        //}
                     }
                 }
 
 
-                int k;
-                for(k = 0; k<LENGHTOFARRAY; k++){
-                    if(routingTable[k].idOfTargetNode == targetNode){
-                        routingTable[k].cost = MAXCOST;
-                        break;
-                    }
-                }
+
+
             }
 
 
