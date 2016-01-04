@@ -19,7 +19,6 @@
 #define LENGHTOFARRAY 100
 #define TIMEOUT 5
 
-//
 bool verbosity = true;
 char quiet[LENGHTOFARRAY] = "--quiet";
 int connectionCount = LENGHTOFARRAY;
@@ -494,7 +493,7 @@ int main(int argc, char **argv) {
                     } else {
                         sendMessage = false;
                     }
-                    printf("NEXT NODE: %d", nextNode);
+                    printf("NEXT NODE: %d\n", nextNode);
                     int k;
                     for (k = 0; k < connectionCount; k++) {
                         if (connections[k].id == nextNode) {
