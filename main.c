@@ -634,7 +634,7 @@ int main(int argc, char **argv) {
 
 //            printf("COnnection count: %d",connectionCount);
             for (j = 0; j < LENGHTOFARRAY; j++) {
-                if (routingTable[j].idOfTargetNode == receivingNode) {
+                if (routingTable[j].idOfTargetNode == receivingNode || routingTable[j].idOfNextNode == receivingNode) {
                     int nextNode = routingTable[j].idOfNextNode;
                     if (routingTable[j].cost != MAXCOST) {
                         sendMessage = true;
@@ -653,7 +653,7 @@ int main(int argc, char **argv) {
                             break;
                         }
                     }
-                    break;
+//                    break;
                 }
             }
 //                if (connections[j].id == receivingNode) {
