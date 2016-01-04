@@ -114,7 +114,7 @@ void *clientThread(void *arg) {
                     connectionsAvailable[ii] = false;
                     int k;
                     for (k = 0; k < LENGHTOFARRAY; k++) {
-                        if (routingTable[k].idOfTargetNode == connections[ii].id) {
+                        if (routingTable[k].idOfTargetNode == connections[ii].id || routingTable[k].idOfNextNode == connections[ii].id) {
                             if (routingTable[k].idOfTargetNode != 0) {
                                 routingTable[k].cost = MAXCOST;
 
@@ -123,11 +123,11 @@ void *clientThread(void *arg) {
 
                                 //!!
                                 strcpy(wholeMessage2, updateMessage);
-                                char str[15];
+                                char str1[15];
                                 char str2[15];
                                 char strmsgPart[15];
-                                sprintf(str, " %d", localId);
-                                strcat(wholeMessage2, str);
+                                sprintf(str1, " %d", localId);
+                                strcat(wholeMessage2, str1);
                                 sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
                                 strcat(wholeMessage2, strmsgPart);
                                 sprintf(str2, " %d", MAXCOST);
@@ -245,13 +245,40 @@ void *serverThread(void *arg) {
                         int j;
                         for (j = 0; j < connectionCount; j++) {
 
-                            if (sendto(s, buf, BUFLEN, 0, &sis[j], slen) == -1) {
-                                diep("sendto()");
+                            int a;
+                            for (a = 0; a < LENGHTOFARRAY; a++) {
+                                strcpy(wholeMessage, updateMessage);
+                                char str[15];
+                                char str2[15];
+                                char strmsgPart[15];
+                                sprintf(str, " %d", localId);
+                                strcat(wholeMessage, str);
+                                sprintf(strmsgPart, " %d", routingTable[a].idOfTargetNode);
+                                strcat(wholeMessage, strmsgPart);
+                                sprintf(str2, " %d", routingTable[a].cost);
+                                strcat(wholeMessage, str2);
+                                sprintf(buf, wholeMessage);
+
+                                int ii;
+                                for (ii = 0; ii < connectionCount; ii++) {
+                                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                                        diep("sendto()");
+                                    }
+
+                                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
+                                               ntohs(sis[ii].sin_port), buf);
+                                }
+
+
                             }
 
-
-                            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[j].sin_addr),
-                                       ntohs(sis[j].sin_port), buf);
+//                            if (sendto(s, buf, BUFLEN, 0, &sis[j], slen) == -1) {
+//                                diep("sendto()");
+//                            }
+//
+//
+//                            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[j].sin_addr),
+//                                       ntohs(sis[j].sin_port), buf);
 
                         }
                     }
@@ -326,6 +353,7 @@ void *serverThread(void *arg) {
 
             } else if (cost >= MAXCOST) {
 
+//                createUpdateMessage(buf,wholeMessage,targetNode,MAXCOST);
                 strcpy(wholeMessage, updateMessage);
                 char str[15];
                 char str2[15];
