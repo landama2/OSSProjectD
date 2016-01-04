@@ -353,7 +353,7 @@ void *serverThread(void *arg) {
                             if (connections[k].id == nextNode) {
                                 si_other.sin_port = htons(connections[k].port);
                                 if (inet_aton(connections[k].ip_address, &si_other.sin_addr) == 0) {
-                                    fprintf(stderr, "inet_aton() failed 2\n");
+                                    fprintf(stderr, "inet_aton() failed\n");
                                     exit(1);
                                 }
                                 break;
@@ -362,7 +362,6 @@ void *serverThread(void *arg) {
                         break;
                     }
                 }
-
                 if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1) {
                     diep("sendto()");
                 }
@@ -374,65 +373,7 @@ void *serverThread(void *arg) {
     return NULL;
 }
 
-//void createUpdateMessage(char *buf, char *wholeMessage, char *msgPart, int cost) {//buggy not sure why
-//    strcpy(wholeMessage, updateMessage);
-//    char str[15];
-//    char str2[15];
-//    sprintf(str, " %d", localId);
-//    strcat(wholeMessage, str);
-//    strcat(wholeMessage, " ");
-//    strcat(wholeMessage, msgPart);
-//    strcat(wholeMessage, " ");
-//    sprintf(str2, " %d", cost);
-//    strcat(wholeMessage, str2);
-//    sprintf(buf, wholeMessage);
-//}
-
-void createUpdateMessage(char *buf, char *wholeMessage, int msgPart, int cost) {
-    strcpy(wholeMessage, updateMessage);
-    char str[15];
-    char str2[15];
-    char strmsgPart[15];
-    sprintf(str, " %d", localId);
-    strcat(wholeMessage, str);
-    sprintf(str2, " %d", msgPart);
-    strcat(wholeMessage, strmsgPart);
-    sprintf(str2, " %d", cost);
-    strcat(wholeMessage, str2);
-    sprintf(buf, wholeMessage);
-}
-
-//converts char array to int
-int toInt(char *a) {
-    int c, sign, offset, n;
-
-    if (a[0] == '-') {  // Handle negative integers
-        sign = -1;
-    }
-
-    if (sign == -1) {  // Set starting position to convert
-        offset = 1;
-    }
-    else {
-        offset = 0;
-    }
-
-    n = 0;
-
-    for (c = offset; a[c] != '\0'; c++) {
-        n = n * 10 + a[c] - '0';
-    }
-
-    if (sign == -1) {
-        n = -n;
-    }
-
-    return n;
-}
-
-
 int main(int argc, char **argv) {
-
     bool readFromFile = true;
 
     if (argc < 2) {
@@ -486,10 +427,6 @@ int main(int argc, char **argv) {
         verbPrintf("ERROR\n");
     }
 
-    //creating server and client thread
-    pthread_t pthreadClient;    // this is our thread identifier
-    int i = 0;
-
     int ii;
     for (ii = 0; ii < connectionCount; ii++) {
         memset((char *) &sis[ii], 0, sizeof(sis[ii]));
@@ -501,10 +438,14 @@ int main(int argc, char **argv) {
         }
     }
 
+    //inicialize routing table
     for (ii = 0; ii < LENGHTOFARRAY; ii++) {
         connectionsAvailable[ii] = false;
         routingTable[ii].cost = MAXCOST;
     }
+
+    //creating server and client thread
+    pthread_t pthreadClient;
 
     pthread_create(&pthreadClient, NULL, clientThread, "foo");
 
@@ -512,13 +453,9 @@ int main(int argc, char **argv) {
 
     pthread_create(&pthreadServer, NULL, serverThread, "foo");
 
-    printf("main is ready to run...\n");
-    printf("main waiting for thread to terminate...\n");
-
     printf("Ready to send messages.\n");
 
     //accepting messages from stdin
-
     bool sendMessage;
 
     struct sockaddr_in si_other;
@@ -530,14 +467,10 @@ int main(int argc, char **argv) {
     if ((s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
         diep("socket");
 
-    //reading and sending msgs
+    //reading messages from user
     while (!got_sig) {
         if (fgets(inputMsg, 128, stdin) != NULL) {
-
             sendMessage = false;
-
-            //sending message to desired port
-            //printf("Message to send: %s\n", inputMsg);
 
             //separate parts of the message
             char nodeNum[128];// also msgPart2
@@ -548,18 +481,11 @@ int main(int argc, char **argv) {
             strcat(wholeMessage, inputMsg);
             strcpy(nodeNum, inputMsg);
             strtok_r(nodeNum, " ", &msgPart3);
-            //printf("Part 1: %s ; Part 2: %s \n", nodeNum, msgPart3);
-            //printf("Receiving node is going to be: %s\n.", nodeNum);
-            //choose converter or atoi ??
-            //receivingNode = toInt(nodeNum);
             receivingNode = atoi(nodeNum);
-            //printf("Receiving node is going to be (converted): %d\n.", receivingNode);
 
             si_other.sin_family = AF_INET;
 
             //find the port
-
-//            printf("COnnection count: %d",connectionCount);
             for (j = 0; j < LENGHTOFARRAY; j++) {
                 if (routingTable[j].idOfTargetNode == receivingNode) {
                     int nextNode = routingTable[j].idOfNextNode;
@@ -583,17 +509,7 @@ int main(int argc, char **argv) {
                     break;
                 }
             }
-//                if (connections[j].id == receivingNode) {
-//                    si_other.sin_port = htons(connections[j].port);
-//                    if (inet_aton(connections[j].ip_address, &si_other.sin_addr) == 0) {
-//                        fprintf(stderr, "inet_aton() failed 2\n");
-//                        exit(1);
-//                    }
-//                    break;
-//                }
 
-
-//            sprintf(buf, "%s\n", inputMsg);
             sprintf(buf, "%s\n", wholeMessage);
             if (sendMessage) {
                 if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
@@ -601,6 +517,7 @@ int main(int argc, char **argv) {
                 printf("Send message to %s:%d\nData: %s\n\n",
                        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
             } else {
+                //print out routing table if cannot send the message
                 printf("Message cannot be send!\n");
                 printf(wholeMessage);
                 int l;
