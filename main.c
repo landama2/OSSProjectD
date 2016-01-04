@@ -107,51 +107,62 @@ void *clientThread(void *arg) {
 
         i = i + 1 % 200000;
 
+        int d;
+        for (d = 0; d < LENGHTOFARRAY; d++) {
+            connections[d].secSinceLastPacket++;
+        }
+
+
         for (ii = 0; ii < LENGHTOFARRAY; ii++) {
             if (connectionsAvailable[ii]) {
-                connections[ii].secSinceLastPacket++;
-                if (connections[ii].secSinceLastPacket > TIMEOUT) {
+//                connections[ii].secSinceLastPacket++;
+//                if (connections[ii].secSinceLastPacket > TIMEOUT) {
                     connectionsAvailable[ii] = false;
                     int k;
                     for (k = 0; k < LENGHTOFARRAY; k++) {
-                        if (routingTable[k].idOfTargetNode == connections[ii].id || routingTable[k].idOfNextNode == connections[ii].id) {
-                            if (routingTable[k].idOfTargetNode != 0) {
-                                routingTable[k].cost = MAXCOST;
 
-                                char buf2[BUFLEN];
-                                char wholeMessage2[BUFLEN];
 
-                                //!!
-                                strcpy(wholeMessage2, updateMessage);
-                                char str1[15];
-                                char str2[15];
-                                char strmsgPart[15];
-                                sprintf(str1, " %d", localId);
-                                strcat(wholeMessage2, str1);
-                                sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
-                                strcat(wholeMessage2, strmsgPart);
-                                sprintf(str2, " %d", MAXCOST);
-                                strcat(wholeMessage2, str2);
-                                sprintf(buf2, wholeMessage2);
-                                //!!
+                        int e;
+                        for (e = 0; e < LENGHTOFARRAY; e++) {
+                            if (connections[e].secSinceLastPacket > TIMEOUT) {
+                               if (routingTable[k].idOfTargetNode == connections[e].id || routingTable[k].idOfNextNode == connections[e].id) {
+                                if (routingTable[k].idOfTargetNode != 0) {
+                                    routingTable[k].cost = MAXCOST;
 
-                                verbPrintf(buf2);
-//            int ii;
-                                for (ii = 0; ii < connectionCount; ii++) {
-                                    if (sendto(s, buf2, BUFLEN, 0, &sis[ii], slen) == -1) {
-                                        diep("sendto()");
+                                    char buf2[BUFLEN];
+                                    char wholeMessage2[BUFLEN];
+
+                                    //!!
+                                    strcpy(wholeMessage2, updateMessage);
+                                    char str1[15];
+                                    char str2[15];
+                                    char strmsgPart[15];
+                                    sprintf(str1, " %d", localId);
+                                    strcat(wholeMessage2, str1);
+                                    sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
+                                    strcat(wholeMessage2, strmsgPart);
+                                    sprintf(str2, " %d", MAXCOST);
+                                    strcat(wholeMessage2, str2);
+                                    sprintf(buf2, wholeMessage2);
+                                    //!!
+
+                                    verbPrintf(buf2);
+                                    int f;
+                                    for (f = 0; f < connectionCount; f++) {
+                                        if (sendto(s, buf2, BUFLEN, 0, &sis[f], slen) == -1) {
+                                            diep("sendto()");
+                                        }
+
+                                        verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[f].sin_addr),
+                                                   ntohs(sis[f].sin_port), buf2);
                                     }
-
-                                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                                               ntohs(sis[ii].sin_port), buf2);
                                 }
-
-
+                            }
                             }
                         }
                     }
 
-                }
+
             }
         }
         sleep(1);
@@ -377,9 +388,10 @@ void *serverThread(void *arg) {
                         break;
                     }
                 }
-                printf("Update message from line 294(MAXCOST): %s\n", buf);
+
                 if(!alreadyKnown){
                     int ii;
+                    printf("Update message from line 294(MAXCOST): %s\n", buf);
                     for (ii = 0; ii < connectionCount; ii++) {
                         //if (connectionsAvailable[ii]) {
 
