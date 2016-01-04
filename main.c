@@ -107,7 +107,7 @@ void *clientThread(void *arg) {
 
         i = i + 1 % 200000;
 
-        for (ii = 0; ii < connectionCount; ii++) {
+        for (ii = 0; ii < LENGHTOFARRAY; ii++) {
             if (connectionsAvailable[ii]) {
                 connections[ii].secSinceLastPacket++;
                 if (connections[ii].secSinceLastPacket > TIMEOUT) {
@@ -241,7 +241,7 @@ void *serverThread(void *arg) {
                     connections[ii].secSinceLastPacket = 0;
 
 
-                    if(!connectionsAvailable[ii]) {
+                    if(!connectionsAvailable[receivedNode]) {
                         int j;
                         for (j = 0; j < connectionCount; j++) {
 
@@ -259,14 +259,14 @@ void *serverThread(void *arg) {
                                 strcat(wholeMessage, str2);
                                 sprintf(buf, wholeMessage);
 
-                                int ii;
-                                for (ii = 0; ii < connectionCount; ii++) {
-                                    if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
+                                int b;
+                                for (b = 0; b < connectionCount; b++) {
+                                    if (sendto(s, buf, BUFLEN, 0, &sis[b], slen) == -1) {
                                         diep("sendto()");
                                     }
 
-                                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                                               ntohs(sis[ii].sin_port), buf);
+                                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[b].sin_addr),
+                                               ntohs(sis[b].sin_port), buf);
                                 }
 
 
@@ -284,7 +284,7 @@ void *serverThread(void *arg) {
                     }
 
 
-                    connectionsAvailable[ii] = true;
+                    connectionsAvailable[receivedNode] = true;
                 }
             }
 
@@ -634,7 +634,7 @@ int main(int argc, char **argv) {
 
 //            printf("COnnection count: %d",connectionCount);
             for (j = 0; j < LENGHTOFARRAY; j++) {
-                if (routingTable[j].idOfTargetNode == receivingNode || routingTable[j].idOfNextNode == receivingNode) {
+                if (routingTable[j].idOfTargetNode == receivingNode) {
                     int nextNode = routingTable[j].idOfNextNode;
                     if (routingTable[j].cost != MAXCOST) {
                         sendMessage = true;
@@ -653,7 +653,7 @@ int main(int argc, char **argv) {
                             break;
                         }
                     }
-//                    break;
+                    break;
                 }
             }
 //                if (connections[j].id == receivingNode) {
