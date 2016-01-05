@@ -119,7 +119,11 @@ void *clientThread(void *arg) {
                                     char strmsgPart[15];
                                     sprintf(str1, " %d", localId);
                                     strcat(wholeMessage2, str1);
-                                    sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
+                                    if (routingTable[k].idOfTargetNode == connections[e].id) {
+                                        sprintf(strmsgPart, " %d", routingTable[k].idOfTargetNode);
+                                    } else {
+                                        sprintf(strmsgPart, " %d", routingTable[k].idOfNextNode);
+                                    }
                                     strcat(wholeMessage2, strmsgPart);
                                     sprintf(str2, " %d", MAXCOST);
                                     strcat(wholeMessage2, str2);
@@ -497,11 +501,7 @@ int main(int argc, char **argv) {
                     int k;
                     for (k = 0; k < connectionCount; k++) {
                         if (connections[k].id == nextNode) {
-                            si_other.sin_port = htons(connections[k].port);
-                            if (inet_aton(connections[k].ip_address, &si_other.sin_addr) == 0) {
-                                fprintf(stderr, "inet_aton() failed 2\n");
-                                exit(1);
-                            }
+                            si_other = sis[k];
                             break;
                         }
                     }
@@ -518,7 +518,7 @@ int main(int argc, char **argv) {
             } else {
                 //print out routing table if cannot send the message
                 printf("Message cannot be send!\n");
-                printf(wholeMessage);
+                printf("%s\n", wholeMessage);
                 int l;
                 for (l = 0; l < 10; l++) {
                     printf("target node: %d ", routingTable[l].idOfTargetNode);
