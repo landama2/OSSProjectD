@@ -85,8 +85,6 @@ void *clientThread(void *arg) {
             if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                 diep("sendto()");
             }
-
-            verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr), ntohs(sis[ii].sin_port), buf);
         }
 
         int d;
@@ -111,7 +109,6 @@ void *clientThread(void *arg) {
                                 if (routingTable[k].idOfTargetNode != 0) {
                                     routingTable[k].cost = MAXCOST;
 
-
                                     char buf2[BUFLEN];
                                     char wholeMessage2[BUFLEN];
                                     strcpy(wholeMessage2, updateMessage);
@@ -130,16 +127,11 @@ void *clientThread(void *arg) {
                                     strcat(wholeMessage2, str2);
                                     sprintf(buf2, wholeMessage2);
 
-                                    verbPrintf(buf2);
-
                                     int f;
                                     for (f = 0; f < connectionCount; f++) {
                                         if (sendto(s, buf2, BUFLEN, 0, &sis[f], slen) == -1) {
                                             diep("sendto()");
                                         }
-
-                                        verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[f].sin_addr),
-                                                   ntohs(sis[f].sin_port), buf2);
                                     }
                                 }
                             }
@@ -188,8 +180,6 @@ void *serverThread(void *arg) {
         //find out what type of message it is
         if (strcmp(wholeMessage, clientMessage) == 0) {
             //received connecting packet, not a message
-            verbPrintf("Received CONNECTING packet from %s:%d\nMessage: %s %d\n\n",
-                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), wholeMessage, receivedNode);
             //updating routing table
             routingTable[receivedNode].cost = 1;
             routingTable[receivedNode].idOfTargetNode = receivedNode;
@@ -208,16 +198,11 @@ void *serverThread(void *arg) {
             strcat(wholeMessage, str2);
             sprintf(buf, wholeMessage);
 
-            verbPrintf(buf);
-
             int c;
             for (c = 0; c < connectionCount; c++) {
                 if (sendto(s, buf, BUFLEN, 0, &sis[c], slen) == -1) {
                     diep("sendto()");
                 }
-
-                verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[c].sin_addr),
-                           ntohs(sis[c].sin_port), buf);
             }
 
             int ii;
@@ -248,9 +233,6 @@ void *serverThread(void *arg) {
                                     if (sendto(s, buf, BUFLEN, 0, &sis[b], slen) == -1) {
                                         diep("sendto()");
                                     }
-
-                                    verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[b].sin_addr),
-                                               ntohs(sis[b].sin_port), buf);
                                 }
                             }
                         }
@@ -275,7 +257,7 @@ void *serverThread(void *arg) {
                 routingTable[targetNode].idOfNextNode = receivedNode;
                 routingTable[targetNode].idOfTargetNode = targetNode;
 
-                printf("Update message received (line 274): %s\n", buf);
+                verbPrintf("Update message received: %s\n", buf);
                 //send update messages to all connections
                 int a;
                 for (a = 0; a < LENGHTOFARRAY; a++) {
@@ -296,12 +278,9 @@ void *serverThread(void *arg) {
                         if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                             diep("sendto()");
                         }
-
-                        verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                                   ntohs(sis[ii].sin_port), buf);
                     }
                 }
-              //received message about disconnected node
+                //received message about disconnected node
             } else if (cost >= MAXCOST) {
                 //update all connected nodes about lost connection
                 strcpy(wholeMessage, updateMessage);
@@ -330,22 +309,20 @@ void *serverThread(void *arg) {
 
                 if (!alreadyKnown) {
                     int ii;
-                    printf("Update message from line 294(MAXCOST): %s\n", buf);
+                    verbPrintf("Update message (MAXCOST): %s\n", buf);
                     for (ii = 0; ii < connectionCount; ii++) {
                         if (sendto(s, buf, BUFLEN, 0, &sis[ii], slen) == -1) {
                             diep("sendto()");
                         }
-
-                        verbPrintf("Send packet to %s:%d\nData: %s\n\n", inet_ntoa(sis[ii].sin_addr),
-                                   ntohs(sis[ii].sin_port), buf);
                     }
                 }
             }
         } else {
             //received message
             if (receivedNode == localId) {
-                printf("Received packet from %s:%d\nMessage: %s\n\n",
-                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), msgPart);
+                verbPrintf("Received packet from %s:%d\n",
+                       inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+                printf("Message: %s\n", msgPart);
             } else {
                 //send message to proper node
                 int j;
@@ -411,7 +388,6 @@ int main(int argc, char **argv) {
     }
 
     localId = atoi(argv[1]);
-    verbPrintf("\n%s\n", argv[2]);
     int result = parseRouteConfiguration(((argc > 2) && readFromFile) ? argv[2] : NULL, localId, &localPort,
                                          &connectionCount,
                                          connections);
@@ -499,7 +475,7 @@ int main(int argc, char **argv) {
                     } else {
                         sendMessage = false;
                     }
-                    printf("NEXT NODE: %d\n", nextNode);
+                    verbPrintf("NEXT NODE: %d\n", nextNode);
                     int k;
                     for (k = 0; k < connectionCount; k++) {
                         if (connections[k].id == nextNode) {
@@ -515,17 +491,17 @@ int main(int argc, char **argv) {
             if (sendMessage) {
                 if (sendto(s, buf, BUFLEN, 0, &si_other, slen) == -1)
                     diep("sendto()");
-                printf("Send message to %s:%d\nData: %s\n\n",
+                printf("Send message to %s:%d\nData: %s\n",
                        inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port), buf);
             } else {
                 //print out routing table if cannot send the message
                 printf("Message cannot be send!\n");
-                printf("%s\n", wholeMessage);
+                verbPrintf("%s\n", wholeMessage);
                 int l;
                 for (l = 0; l < 10; l++) {
-                    printf("target node: %d ", routingTable[l].idOfTargetNode);
-                    printf("next node: %d ", routingTable[l].idOfNextNode);
-                    printf("cost: %d\n", routingTable[l].cost);
+                    verbPrintf("target node: %d ", routingTable[l].idOfTargetNode);
+                    verbPrintf("next node: %d ", routingTable[l].idOfNextNode);
+                    verbPrintf("cost: %d\n", routingTable[l].cost);
                 }
             }
 
