@@ -98,7 +98,6 @@ void *clientThread(void *arg) {
         int jj;
         for (jj = 0; jj < LENGHTOFARRAY; jj++) {
             if (connectionsAvailable[jj]) {
-                connectionsAvailable[jj] = false;
                 int k;
                 for (k = 0; k < LENGHTOFARRAY; k++) {
                     int e;
@@ -110,6 +109,7 @@ void *clientThread(void *arg) {
                                 routingTable[k].idOfNextNode == connections[e].id) {
                                 if (routingTable[k].idOfTargetNode != 0) {
                                     routingTable[k].cost = MAXCOST;
+                                    connectionsAvailable[k] = false;
 
                                     char buf2[BUFLEN];
                                     char wholeMessage2[BUFLEN];
