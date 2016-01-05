@@ -17,7 +17,7 @@
 #define BUFLEN 512
 #define MAXCOST 128
 #define LENGHTOFARRAY 100
-#define TIMEOUT 5
+#define TIMEOUT 2
 
 bool verbosity = true;
 char quiet[LENGHTOFARRAY] = "--quiet";

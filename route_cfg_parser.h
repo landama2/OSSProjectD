@@ -12,10 +12,10 @@
 #define IP_ADDRESS_MAX_LENGTH 16
 
 typedef struct {
-	int id;
-	int port;
-	char ip_address[IP_ADDRESS_MAX_LENGTH];
-	int secSinceLastPacket;
+    int id;
+    int port;
+    char ip_address[IP_ADDRESS_MAX_LENGTH];
+    int secSinceLastPacket;
 } TConnection;
 
 
@@ -33,7 +33,8 @@ typedef struct {
  *
  */
 
-int parseRouteConfiguration(const char * fileName, int localId, int * localPort, int * connectionCount, TConnection * connections);
+int parseRouteConfiguration(const char *fileName, int localId, int *localPort, int *connectionCount,
+                            TConnection *connections);
 
 #endif
 
