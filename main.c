@@ -107,9 +107,10 @@ void *clientThread(void *arg) {
                             //update routing table and send it to all available nodes connected
                             if (routingTable[k].idOfTargetNode == connections[e].id ||
                                 routingTable[k].idOfNextNode == connections[e].id) {
+                                connectionsAvailable[k] = false;
                                 if (routingTable[k].idOfTargetNode != 0) {
                                     routingTable[k].cost = MAXCOST;
-                                    connectionsAvailable[k] = false;
+
 
                                     char buf2[BUFLEN];
                                     char wholeMessage2[BUFLEN];
