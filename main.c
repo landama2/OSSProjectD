@@ -446,6 +446,7 @@ int main(int argc, char **argv) {
     for (ii = 0; ii < LENGHTOFARRAY; ii++) {
         connectionsAvailable[ii] = false;
         routingTable[ii].cost = MAXCOST;
+        routingTable[ii].idOfTargetNode = ii;
     }
 
     //creating server and client thread
