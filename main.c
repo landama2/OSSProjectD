@@ -90,7 +90,7 @@ void *clientThread(void *arg) {
         }
 
         int d;
-        for (d = 0; d < LENGHTOFARRAY; d++) {
+        for (d = 0; d < connectionCount; d++) {
             //add second since last connection packet to all connections
             connections[d].secSinceLastPacket++;
         }
@@ -102,7 +102,7 @@ void *clientThread(void *arg) {
                 int k;
                 for (k = 0; k < LENGHTOFARRAY; k++) {
                     int e;
-                    for (e = 0; e < LENGHTOFARRAY; e++) {
+                    for (e = 0; e < connectionCount; e++) {
                         if (connections[e].secSinceLastPacket > TIMEOUT) {
                             //one of the connections didn't send connecting packets for too long
                             //update routing table and send it to all available nodes connected
